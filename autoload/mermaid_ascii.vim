@@ -126,16 +126,19 @@ function! mermaid_ascii#UpdateRenderBlock(block)
   " Get current content from buffer
   let current_content = getline(a:block.mermaid_start + 1, a:block.mermaid_end - 1)
   
-  " Check if content actually changed
-  if current_content == a:block.content
-    " No changes, don't update
-    return 0
-  endif
-  
   " Render the mermaid content
   let rendered = mermaid_ascii#RenderMermaid(current_content)
   
   if empty(rendered)
+    return 0
+  endif
+  
+  " Get old rendered content
+  let old_rendered = getline(a:block.render_start + 1, a:block.render_end - 1)
+  
+  " Check if rendered output actually changed
+  if rendered == old_rendered
+    " No changes in output, don't update
     return 0
   endif
   
