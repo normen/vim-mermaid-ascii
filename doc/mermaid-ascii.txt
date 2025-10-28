@@ -2,7 +2,7 @@
 
 Author:  normen
 License: MIT
-Version: 2.0.0
+Version: 3.1.0
 
 ==============================================================================
 CONTENTS                                            *mermaid-ascii-contents*
@@ -10,24 +10,27 @@ CONTENTS                                            *mermaid-ascii-contents*
     1. Introduction ............... |mermaid-ascii-introduction|
     2. Requirements ............... |mermaid-ascii-requirements|
     3. Installation ............... |mermaid-ascii-installation|
-    4. Usage ...................... |mermaid-ascii-usage|
+    4. Quick Start ................ |mermaid-ascii-quickstart|
     5. Commands ................... |mermaid-ascii-commands|
     6. Mappings ................... |mermaid-ascii-mappings|
     7. Configuration .............. |mermaid-ascii-configuration|
-    8. About ...................... |mermaid-ascii-about|
+    8. Workflows .................. |mermaid-ascii-workflows|
+    9. File Format ................ |mermaid-ascii-format|
+    10. About ..................... |mermaid-ascii-about|
 
 ==============================================================================
 1. Introduction                                 *mermaid-ascii-introduction*
 
 vim-mermaid-ascii is a Vim plugin that renders Mermaid diagrams as ASCII art
-using Vim's folding mechanism. The rendered diagrams are display-only - your
-original mermaid code is never modified in the buffer.
+using the mermaid-ascii tool. The rendered diagrams are saved in the file in
+special code blocks, making them viewable without the plugin.
 
 Features:
-  * Render ```mermaid``` code blocks as ASCII art using folds
-  * Buffer content is never modified - safe to save!
-  * Toggle individual blocks or all blocks at once
-  * Original code is always preserved
+  * Render blocks saved in file (viewable in GitHub, text editors, print)
+  * Auto-update when editing (optional)
+  * Manual update commands for fine-grained control
+  * Toggle individual or all diagrams
+  * No buffer modification when just scrolling
 
 ==============================================================================
 2. Requirements                                 *mermaid-ascii-requirements*
@@ -52,19 +55,14 @@ Using Pathogen: >
     git clone https://github.com/normen/vim-mermaid-ascii.git
 <
 
-Manual installation: >
-    git clone https://github.com/normen/vim-mermaid-ascii.git
-    cp -r vim-mermaid-ascii/plugin ~/.vim/
-    cp -r vim-mermaid-ascii/autoload ~/.vim/
-<
+Installing mermaid-ascii binary:
+See https://github.com/AlexanderGrooff/mermaid-ascii/releases
 
 ==============================================================================
-4. Usage                                               *mermaid-ascii-usage*
+4. Quick Start                                    *mermaid-ascii-quickstart*
 
-Create a markdown file with mermaid code blocks: >
+1. Create a markdown file with a mermaid code block: >
 
-    # My Diagram
-    
     ```mermaid
     graph LR
     A --> B
@@ -72,61 +70,82 @@ Create a markdown file with mermaid code blocks: >
     ```
 <
 
-Then run: >
-    :MermaidAsciiRender
+2. Create a render block: >
+    :MermaidAsciiToggleBlock    " or <Leader>mb
 <
 
-The mermaid code block will be folded and display ASCII art. The actual
-buffer content remains unchanged - only the display changes!
+3. Edit the mermaid code and move cursor away - it auto-updates!
 
-To edit a diagram: >
-    zo                          " Open the fold (standard Vim command)
-    :MermaidAsciiToggleBlock    " Or toggle the current block
+4. Or update manually: >
+    :MermaidAsciiUpdate         " or <Leader>mu
 <
-
-Edit the mermaid code, then re-render with :MermaidAsciiRender or toggle
-the block again.
-
-IMPORTANT: When you save the file (:w), only the original mermaid code is
-saved. The rendered ASCII art is display-only and never written to the file.
 
 ==============================================================================
 5. Commands                                         *mermaid-ascii-commands*
 
+Auto-Processing Control ~
+
 :MermaidAsciiRender                                    *:MermaidAsciiRender*
-    Render all mermaid blocks in the current buffer as folded ASCII art.
-    The buffer content is not modified.
+    Toggle auto-update on/off. When enabled, render blocks automatically
+    update when you edit mermaid code and move the cursor away.
+    Does NOT render anything - just controls auto-processing.
 
-:MermaidAsciiUnrender                                *:MermaidAsciiUnrender*
-    Remove all folds, showing the original mermaid code.
+Manual Updates ~
 
-:MermaidAsciiToggle                                    *:MermaidAsciiToggle*
-    Toggle between rendered (folded) and original state for all blocks.
+:MermaidAsciiUpdate                                    *:MermaidAsciiUpdate*
+    Update the render block for the current mermaid diagram.
+    Cursor must be in a mermaid block or its render block.
+    Creates new render if output changed, otherwise reports "up to date".
+
+:MermaidAsciiUpdateAll                              *:MermaidAsciiUpdateAll*
+    Update all existing render blocks in the buffer.
+    Only updates blocks that have render blocks already.
+    Skips blocks where output hasn't changed.
+
+Render Block Management ~
 
 :MermaidAsciiToggleBlock                          *:MermaidAsciiToggleBlock*
-    Toggle the current block under the cursor between rendered and original
-    state. Useful for working with individual blocks.
+    Create or remove the render block for the current mermaid diagram.
+    If render block exists: removes it.
+    If no render block: creates one with rendered ASCII art.
+
+:MermaidAsciiToggle                                    *:MermaidAsciiToggle*
+    Create or remove render blocks for ALL mermaid diagrams.
+    If any render blocks exist: removes all.
+    If no render blocks: creates all.
+
+:MermaidAsciiUnrender                                *:MermaidAsciiUnrender*
+    Remove all render blocks from the buffer.
+    Leaves mermaid source code intact.
 
 ==============================================================================
 6. Mappings                                         *mermaid-ascii-mappings*
 
-Default mappings (in normal mode):
+Default Mappings ~
 
-<Leader>mr          Render all mermaid blocks
-<Leader>mu          Unrender all mermaid blocks
-<Leader>mt          Toggle rendering
-<Leader>mb          Toggle current block
+<Leader>mr          Toggle auto-update on/off
+<Leader>mu          Update current block
+<Leader>ma          Update all blocks
+<Leader>mb          Toggle current render block
+<Leader>mt          Toggle all render blocks
 
-To disable default mappings, add to your vimrc: >
+Customizing Mappings ~
+
+To disable default mappings: >
     let g:mermaid_ascii_no_mappings = 1
 <
 
-Then define your own: >
+Then define your own mappings: >
+    " Example: use different keys
     nnoremap <Leader>ma :MermaidAsciiRender<CR>
-    nnoremap <Leader>ms :MermaidAsciiUnrender<CR>
-    nnoremap <Leader>mt :MermaidAsciiToggle<CR>
-    nnoremap <Leader>mb :MermaidAsciiToggleBlock<CR>
+    nnoremap <Leader>mc :MermaidAsciiUpdate<CR>
+    nnoremap <Leader>mu :MermaidAsciiUpdateAll<CR>
+    nnoremap <Leader>mt :MermaidAsciiToggleBlock<CR>
+    nnoremap <Leader>mg :MermaidAsciiToggle<CR>
 <
+
+You can map to any keys you prefer. The plugin only provides the commands,
+you have full control over the mappings.
 
 ==============================================================================
 7. Configuration                               *mermaid-ascii-configuration*
@@ -142,20 +161,146 @@ Then define your own: >
     Default: '' >
         let g:mermaid_ascii_options = '--borderPadding 2 --paddingX 8'
 <
+    See mermaid-ascii documentation for available options.
+
+*g:mermaid_ascii_auto_update*
+    Enable/disable auto-update when cursor leaves mermaid blocks.
+    Default: 1 (enabled) >
+        let g:mermaid_ascii_auto_update = 0
+<
+    When disabled, you must use manual update commands.
 
 *g:mermaid_ascii_no_mappings*
     Disable default key mappings.
-    Default: 0 >
+    Default: 0 (mappings enabled) >
         let g:mermaid_ascii_no_mappings = 1
 <
+    When enabled, you must define your own mappings.
 
 ==============================================================================
-8. About                                               *mermaid-ascii-about*
+8. Workflows                                       *mermaid-ascii-workflows*
+
+Auto-Update Workflow (Default) ~
+
+This is the default workflow with automatic updates:
+
+1. Position cursor in a mermaid block
+2. Create render block: >
+    :MermaidAsciiToggleBlock    " or <Leader>mb
+<
+3. Edit the mermaid code
+4. Move cursor away → render updates automatically!
+
+The render block is created below the mermaid block and updates whenever
+you edit the mermaid code and move the cursor outside the block.
+
+Manual Update Workflow ~
+
+For more control over when renders update:
+
+1. Disable auto-update: >
+    :MermaidAsciiRender         " or <Leader>mr
+<
+2. Create render blocks as needed: >
+    :MermaidAsciiToggleBlock    " or <Leader>mb
+<
+3. Edit mermaid code
+4. Update when ready: >
+    :MermaidAsciiUpdate         " or <Leader>mu
+<
+
+This prevents updates while scrolling and gives you control over when
+the potentially slow rendering process runs.
+
+Batch Workflow ~
+
+For working with multiple diagrams:
+
+1. Create all render blocks at once: >
+    :MermaidAsciiToggle         " or <Leader>mt
+<
+2. Edit multiple mermaid diagrams
+3. Update all at once when done: >
+    :MermaidAsciiUpdateAll      " or <Leader>ma
+<
+
+This is efficient when you're making many changes across the document.
+
+Mixed Workflow ~
+
+You can combine approaches:
+
+1. Use auto-update for some diagrams (create with <Leader>mb)
+2. Disable auto-update for others (toggle with <Leader>mr)
+3. Manually update as needed (<Leader>mu)
+
+==============================================================================
+9. File Format                                      *mermaid-ascii-format*
+
+The plugin creates special code blocks to store rendered ASCII art.
+
+Example ~
+
+Before rendering: >
+    ```mermaid
+    graph LR
+    A --> B
+    B --> C
+    ```
+<
+
+After :MermaidAsciiToggleBlock: >
+    ```mermaid
+    graph LR
+    A --> B
+    B --> C
+    ```
+    
+    ```mermaid-ascii-render
+    ┌───┐     ┌───┐     ┌───┐
+    │   │     │   │     │   │
+    │ A ├────►│ B ├────►│ C │
+    │   │     │   │     │   │
+    └───┘     └───┘     └───┘
+    ```
+<
+
+Marker Blocks ~
+
+The plugin uses ```mermaid-ascii-render as a marker for render blocks.
+
+Important:
+  * Edit the mermaid block, NOT the render block
+  * The render block updates automatically (if auto-update enabled)
+  * Both blocks are saved in the file
+  * The render block is viewable in any text viewer, GitHub, or printed
+
+File Portability ~
+
+Files with render blocks are viewable without the plugin:
+  * GitHub renders the ASCII art in code blocks
+  * Text editors show the ASCII art
+  * cat, less, grep all show the ASCII art
+  * Printed documents include the ASCII art
+
+This makes your diagrams portable and accessible everywhere!
+
+==============================================================================
+10. About                                              *mermaid-ascii-about*
 
 vim-mermaid-ascii integrates with mermaid-ascii by AlexanderGrooff:
 https://github.com/AlexanderGrooff/mermaid-ascii
 
-Report bugs and contribute at:
+Plugin repository:
 https://github.com/normen/vim-mermaid-ascii
+
+Report bugs and contribute:
+https://github.com/normen/vim-mermaid-ascii/issues
+
+Version History:
+  v3.1.0 - Restructured commands, separate auto-toggle from rendering
+  v3.0.0 - Render blocks saved in file
+  v2.0.0 - Virtual text approach (archived in branch)
+  v1.x   - Buffer replacement approach (deprecated)
 
 vim:tw=78:ts=8:ft=help:norl:
