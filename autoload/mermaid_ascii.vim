@@ -1,12 +1,13 @@
 " vim-mermaid-ascii - Autoload functions
 " Maintainer: normen
-" Version: 1.0.0
+" Version: 2.0.0
+" 
+" This version uses folding with custom foldtext to display rendered diagrams
+" without modifying the actual buffer content.
 
 " State tracking
 let s:mermaid_blocks = {}
-let s:rendered_state = {}
-let s:current_block = -1
-let s:auto_render_enabled = 0
+let s:fold_cache = {}
 
 " Find all mermaid blocks in the buffer
 function! mermaid_ascii#FindMermaidBlocks()
@@ -71,119 +72,71 @@ function! mermaid_ascii#RenderMermaid(content)
   return output
 endfunction
 
-" Render a single block
-function! mermaid_ascii#RenderBlock(block_idx)
-  let block = s:mermaid_blocks[a:block_idx]
+" Custom fold text function that displays one line at a time from rendered output
+function! mermaid_ascii#FoldText()
+  let fold_start = v:foldstart
+  let fold_end = v:foldend
   
-  " Already rendered?
-  if get(s:rendered_state, a:block_idx, 0)
-    return
-  endif
-  
-  " Render the mermaid content
-  let rendered = mermaid_ascii#RenderMermaid(block.content)
-  
-  if empty(rendered)
-    return
-  endif
-  
-  " Store the original content
-  let s:mermaid_blocks[a:block_idx].rendered = rendered
-  
-  " Save modified state
-  let l:was_modified = &modified
-  
-  " Replace the lines
-  let start = block.start
-  let end = block.end
-  
-  " Delete the block (including ``` markers) without triggering autocmds
-  noautocmd execute start . ',' . end . 'delete'
-  
-  " Insert rendered content at the same position
-  noautocmd call append(start - 1, rendered)
-  
-  " Restore modified state
-  let &modified = l:was_modified
-  
-  " Update block positions
-  let line_diff = len(rendered) - (end - start + 1)
-  let s:mermaid_blocks[a:block_idx].rendered_start = start
-  let s:mermaid_blocks[a:block_idx].rendered_end = start + len(rendered) - 1
-  
-  " Adjust positions of subsequent blocks
-  for idx in keys(s:mermaid_blocks)
-    if idx > a:block_idx
-      let s:mermaid_blocks[idx].start += line_diff
-      let s:mermaid_blocks[idx].end += line_diff
-      if has_key(s:mermaid_blocks[idx], 'rendered_start')
-        let s:mermaid_blocks[idx].rendered_start += line_diff
-        let s:mermaid_blocks[idx].rendered_end += line_diff
-      endif
+  " Check if this fold has cached rendered content
+  let cache_key = bufnr('%') . ':' . fold_start . '-' . fold_end
+  if has_key(s:fold_cache, cache_key)
+    let lines = s:fold_cache[cache_key]
+    " Calculate which line of the rendered output to show
+    " v:foldstart is the current line in the fold being displayed
+    let rel_line = v:foldstart - fold_start
+    if rel_line < len(lines)
+      return lines[rel_line]
     endif
-  endfor
+  endif
   
-  " Mark as rendered
-  let s:rendered_state[a:block_idx] = 1
+  " Default fallback - show original line
+  return getline(v:foldstart)
 endfunction
 
-" Unrender a single block (restore original mermaid code)
-function! mermaid_ascii#UnrenderBlock(block_idx)
-  let block = s:mermaid_blocks[a:block_idx]
+" Render a single block by creating a fold
+function! mermaid_ascii#RenderBlock(start, end, content)
+  " Render the mermaid content
+  let rendered = mermaid_ascii#RenderMermaid(a:content)
   
-  " Not rendered?
-  if !get(s:rendered_state, a:block_idx, 0)
-    return
+  if empty(rendered)
+    return 0
   endif
   
-  " Save modified state
-  let l:was_modified = &modified
+  " Cache the rendered output
+  let cache_key = bufnr('%') . ':' . a:start . '-' . a:end
+  let s:fold_cache[cache_key] = rendered
   
-  " Get positions
-  let start = block.rendered_start
-  let end = block.rendered_end
+  " Create a fold for this block
+  execute a:start . ',' . a:end . 'fold'
   
-  " Delete rendered lines without triggering autocmds
-  noautocmd execute start . ',' . end . 'delete'
+  " Close the fold to show rendered content
+  execute a:start . 'foldclose'
   
-  " Restore original mermaid block
-  let original = ['```mermaid'] + block.content + ['```']
-  noautocmd call append(start - 1, original)
-  
-  " Restore modified state
-  let &modified = l:was_modified
-  
-  " Update positions
-  let line_diff = len(original) - (end - start + 1)
-  let s:mermaid_blocks[a:block_idx].start = start
-  let s:mermaid_blocks[a:block_idx].end = start + len(original) - 1
-  
-  " Remove rendered position tracking
-  if has_key(s:mermaid_blocks[a:block_idx], 'rendered_start')
-    unlet s:mermaid_blocks[a:block_idx].rendered_start
-  endif
-  if has_key(s:mermaid_blocks[a:block_idx], 'rendered_end')
-    unlet s:mermaid_blocks[a:block_idx].rendered_end
+  return 1
+endfunction
+
+" Unrender a block by removing the fold
+function! mermaid_ascii#UnrenderBlock(start, end)
+  let cache_key = bufnr('%') . ':' . a:start . '-' . a:end
+  if has_key(s:fold_cache, cache_key)
+    unlet s:fold_cache[cache_key]
   endif
   
-  " Adjust positions of subsequent blocks
-  for idx in keys(s:mermaid_blocks)
-    if idx > a:block_idx
-      let s:mermaid_blocks[idx].start += line_diff
-      let s:mermaid_blocks[idx].end += line_diff
-      if has_key(s:mermaid_blocks[idx], 'rendered_start')
-        let s:mermaid_blocks[idx].rendered_start += line_diff
-        let s:mermaid_blocks[idx].rendered_end += line_diff
-      endif
-    endif
-  endfor
-  
-  " Mark as not rendered
-  let s:rendered_state[a:block_idx] = 0
+  " Delete the fold
+  execute a:start . ',' . a:end . 'foldopen!'
 endfunction
 
 " Render all mermaid blocks in the buffer
 function! mermaid_ascii#RenderAll()
+  " Save current settings
+  let w:mermaid_saved_fdm = get(w:, 'mermaid_saved_fdm', &l:foldmethod)
+  let w:mermaid_saved_fen = get(w:, 'mermaid_saved_fen', &l:foldenable)
+  
+  " Set up folding
+  setlocal foldmethod=manual
+  setlocal foldenable
+  setlocal foldtext=mermaid_ascii#FoldText()
+  
   " Find all blocks
   let blocks = mermaid_ascii#FindMermaidBlocks()
   
@@ -192,157 +145,102 @@ function! mermaid_ascii#RenderAll()
     return
   endif
   
-  " Store blocks
-  let s:mermaid_blocks = {}
-  let s:rendered_state = {}
-  let idx = 0
+  " Clear existing folds
+  normal! zE
+  
+  " Render each block
+  let rendered_rendered_count . 0
   for block in blocks
-    let s:mermaid_blocks[idx] = block
-    let idx += 1
+    if mermaid_ascii#RenderBlock(block.start, block.end, block.content)
+      let rendered_count += 1
+    endif
   endfor
   
-  " Render each block (in reverse order to maintain line numbers)
-  for idx in reverse(range(len(blocks)))
-    call mermaid_ascii#RenderBlock(idx)
-  endfor
-  
-  " Enable auto-rendering
-  let s:auto_render_enabled = 1
-  
-  echo 'Rendered ' . len(blocks) . ' mermaid block(s) - auto-rendering enabled'
+  echo 'Rendered ' . rendered_count . ' mermaid block(s) - original content preserved'
 endfunction
 
 " Unrender all mermaid blocks
 function! mermaid_ascii#UnrenderAll()
-  if empty(s:mermaid_blocks)
-    echo 'No rendered mermaid blocks'
-    return
-  endif
+  " Clear all folds
+  normal! zE
   
-  " Disable auto-rendering
-  let s:auto_render_enabled = 0
-  
-  " Unrender each block (in reverse order)
-  for idx in reverse(sort(keys(s:mermaid_blocks), {a, b -> a - b}))
-    call mermaid_ascii#UnrenderBlock(idx)
+  " Clear cache for this buffer
+  let buf_prefix = bufnr('%') . ':'
+  for key in keys(s:fold_cache)
+    if key =~# '^' . buf_prefix
+      unlet s:fold_cache[key]
+    endif
   endfor
   
-  echo 'Unrendered all mermaid blocks - auto-rendering disabled'
+  " Restore settings if saved
+  if exists('w:mermaid_saved_fdm')
+    let &l:foldmethod = w:mermaid_saved_fdm
+    unlet w:mermaid_saved_fdm
+  endif
+  if exists('w:mermaid_saved_fen')
+    let &l:foldenable = w:mermaid_saved_fen
+    unlet w:mermaid_saved_fen
+  endif
+  
+  echo 'Unrendered all mermaid blocks'
 endfunction
 
 " Toggle rendering state
 function! mermaid_ascii#Toggle()
-  " Check if we have any rendered blocks
-  let has_rendered = 0
-  for state in values(s:rendered_state)
-    if state
-      let has_rendered = 1
+  " Check if we have any folds in cache for this buffer
+  let buf_prefix = bufnr('%') . ':'
+  let has_folds = 0
+  for key in keys(s:fold_cache)
+    if key =~# '^' . buf_prefix
+      let has_folds = 1
       break
     endif
   endfor
   
-  if has_rendered || s:auto_render_enabled
+  if has_folds
     call mermaid_ascii#UnrenderAll()
   else
     call mermaid_ascii#RenderAll()
   endif
 endfunction
 
-" Find which block the cursor is in
-function! mermaid_ascii#GetBlockAtCursor()
+" Toggle current block
+function! mermaid_ascii#ToggleBlock()
+  let blocks = mermaid_ascii#FindMermaidBlocks()
+  
+  if empty(blocks)
+    echo 'No mermaid blocks found'
+    return
+  endif
+  
   let lnum = line('.')
   
-  for [idx, block] in items(s:mermaid_blocks)
-    if get(s:rendered_state, idx, 0)
-      " Check rendered position
-      if has_key(block, 'rendered_start') && lnum >= block.rendered_start && lnum <= block.rendered_end
-        return str2nr(idx)
+  " Find block containing current line
+  for block in blocks
+    if lnum >= block.start && lnum <= block.end
+      let cache_key = bufnr('%') . ':' . block.start . '-' . block.end
+      
+      if has_key(s:fold_cache, cache_key)
+        " Block is rendered, unrender it
+        call mermaid_ascii#UnrenderBlock(block.start, block.end)
+        echo 'Block unrendered'
+      else
+        " Block is not rendered, render it
+        if &l:foldmethod !=# 'manual'
+          let w:mermaid_saved_fdm = &l:foldmethod
+          let w:mermaid_saved_fen = &l:foldenable
+          setlocal foldmethod=manual
+          setlocal foldenable
+          setlocal foldtext=mermaid_ascii#FoldText()
+        endif
+        
+        if mermaid_ascii#RenderBlock(block.start, block.end, block.content)
+          echo 'Block rendered'
+        endif
       endif
-    else
-      " Check original position
-      if lnum >= block.start && lnum <= block.end
-        return str2nr(idx)
-      endif
+      return
     endif
   endfor
   
-  return -1
-endfunction
-
-" Toggle a single block at cursor position
-function! mermaid_ascii#ToggleBlock()
-  " Initialize blocks if not already done
-  if empty(s:mermaid_blocks)
-    let blocks = mermaid_ascii#FindMermaidBlocks()
-    if empty(blocks)
-      echo 'No mermaid blocks found'
-      return
-    endif
-    let idx = 0
-    for block in blocks
-      let s:mermaid_blocks[idx] = block
-      let idx += 1
-    endfor
-  endif
-  
-  let current_block = mermaid_ascii#GetBlockAtCursor()
-  
-  if current_block < 0
-    echo 'Cursor is not in a mermaid block'
-    return
-  endif
-  
-  if get(s:rendered_state, current_block, 0)
-    " Block is rendered, unrender it
-    call mermaid_ascii#UnrenderBlock(current_block)
-    echo 'Block unrendered'
-  else
-    " Block is not rendered, render it
-    " First update content from buffer
-    let block = s:mermaid_blocks[current_block]
-    let new_content = getline(block.start + 1, block.end - 1)
-    let s:mermaid_blocks[current_block].content = new_content
-    call mermaid_ascii#RenderBlock(current_block)
-    echo 'Block rendered'
-  endif
-endfunction
-
-" Handle cursor movement
-function! mermaid_ascii#OnCursorMoved()
-  " Only process if auto-rendering is enabled
-  if !s:auto_render_enabled
-    return
-  endif
-  
-  " Check if auto-toggle is enabled
-  let auto_toggle = get(g:, 'mermaid_ascii_auto_toggle', 1)
-  if !auto_toggle
-    return
-  endif
-  
-  let current_block = mermaid_ascii#GetBlockAtCursor()
-  
-  " If we moved into a rendered block, unrender it
-  if current_block >= 0 && current_block != s:current_block
-    if get(s:rendered_state, current_block, 0)
-      call mermaid_ascii#UnrenderBlock(current_block)
-      " Update the block content from the buffer
-      let block = s:mermaid_blocks[current_block]
-      let new_content = getline(block.start + 1, block.end - 1)
-      let s:mermaid_blocks[current_block].content = new_content
-    endif
-  endif
-  
-  " If we left a block, render it again
-  if s:current_block >= 0 && current_block != s:current_block
-    if !get(s:rendered_state, s:current_block, 0)
-      " Update content before rendering
-      let block = s:mermaid_blocks[s:current_block]
-      let new_content = getline(block.start + 1, block.end - 1)
-      let s:mermaid_blocks[s:current_block].content = new_content
-      call mermaid_ascii#RenderBlock(s:current_block)
-    endif
-  endif
-  
-  let s:current_block = current_block
+  echo 'Cursor is not in a mermaid block'
 endfunction

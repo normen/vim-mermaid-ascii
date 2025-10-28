@@ -1,12 +1,17 @@
 # vim-mermaid-ascii
 
-A Vim plugin that renders Mermaid diagrams as ASCII art inline in your buffer using [mermaid-ascii](https://github.com/AlexanderGrooff/mermaid-ascii).
+A Vim plugin that renders Mermaid diagrams as ASCII art inline using [mermaid-ascii](https://github.com/AlexanderGrooff/mermaid-ascii), **without modifying the buffer content**.
 
 ## Features
 
-- **Toggle rendering**: Replace ` ```mermaid ``` ` code blocks with ASCII art
-- **Smart cursor behavior**: Automatically show original Mermaid code when cursor enters a rendered block
-- **Seamless editing**: Edit the Mermaid code, then re-render when you leave the block
+- **Visual-only rendering**: Diagrams are displayed using Vim's folding mechanism - your mermaid code is never modified
+- **Save safely**: The file always contains the original mermaid code, rendered diagrams are display-only
+- **Toggle rendering**: Show/hide ASCII art with simple commands
+- **Block-level control**: Render individual diagrams or all at once
+
+## How It Works
+
+The plugin uses Vim's folding feature with custom fold text to display rendered ASCII diagrams. The actual buffer content (what gets saved to disk) **always** contains your original ```mermaid``` code blocks. The rendered ASCII art is purely visual.
 
 ## Requirements
 
@@ -61,29 +66,27 @@ cp -r vim-mermaid-ascii/autoload ~/.vim/
 
 ### Commands
 
-- `:MermaidAsciiRender` - Render all mermaid blocks in the current buffer
-- `:MermaidAsciiUnrender` - Show original mermaid code for all blocks
-- `:MermaidAsciiToggle` - Toggle between rendered and original state
-- `:MermaidAsciiToggleBlock` - Toggle the current block under cursor
+- `:MermaidAsciiRender` - Render all mermaid blocks as folds
+- `:MermaidAsciiUnrender` - Remove all folds, show original code
+- `:MermaidAsciiToggle` - Toggle between rendered and original state  
+- `:MermaidAsciiToggleBlock` - Toggle the current block only
 
 ### Default Keybindings
 
 - `<Leader>mr` - Render mermaid blocks
-- `<Leader>mu` - Unrender mermaid blocks
+- `<Leader>mu` - Unrender mermaid blocks  
 - `<Leader>mt` - Toggle rendering
 - `<Leader>mb` - Toggle current block
 
-### Automatic Behavior
+### How to Use
 
-When you run `:MermaidAsciiRender`, auto-rendering is enabled. By default, this means when you move your cursor into a rendered mermaid block, it automatically shows the original code for editing. When you move the cursor out, it re-renders the ASCII art.
+1. Open a file with mermaid code blocks
+2. Run `:MermaidAsciiRender` - mermaid blocks become folded and display ASCII art
+3. To edit a block: position cursor on the fold and use `zo` to open it, or use `:MermaidAsciiToggleBlock`
+4. Edit the mermaid code as normal
+5. Re-render with `:MermaidAsciiRender` or toggle the block
 
-When you run `:MermaidAsciiUnrender`, auto-rendering is disabled. The blocks stay as mermaid code and won't auto-render when you move your cursor.
-
-If you prefer to manually toggle individual blocks, you can disable the auto-toggle behavior:
-```vim
-let g:mermaid_ascii_auto_toggle = 0
-```
-Then use `:MermaidAsciiToggleBlock` or `<Leader>mb` to toggle individual blocks manually.
+**Important**: When you save the file (`:w`), only the original mermaid code is saved. The rendered ASCII art is display-only!
 
 ## Configuration
 
@@ -91,14 +94,7 @@ Then use `:MermaidAsciiToggleBlock` or `<Leader>mb` to toggle individual blocks 
 " Set the path to mermaid-ascii binary (default: 'mermaid-ascii')
 let g:mermaid_ascii_bin = '/path/to/mermaid-ascii'
 
-" Disable automatic rendering on cursor move (default: 0)
-let g:mermaid_ascii_no_auto = 1
-
-" Disable auto-toggle when cursor enters/leaves blocks (default: 1)
-" When disabled, use :MermaidAsciiToggleBlock to manually toggle blocks
-let g:mermaid_ascii_auto_toggle = 0
-
-" Set custom keybindings (set to 0 to disable default keybindings)
+" Disable default keybindings (default: 0)
 let g:mermaid_ascii_no_mappings = 1
 
 " Custom mermaid-ascii options (default: '')
@@ -120,7 +116,7 @@ C --> D
 ```
 ~~~
 
-After running `:MermaidAsciiRender`, you'll see:
+After running `:MermaidAsciiRender`, the mermaid block becomes a fold displaying:
 
 ```
 # My Diagram
@@ -132,7 +128,9 @@ After running `:MermaidAsciiRender`, you'll see:
 └───┘     └───┘     └───┘     └───┘
 ```
 
-Move your cursor into the diagram area and the original mermaid code will appear for editing!
+But when you save the file, it contains the original mermaid code! The ASCII art is just a visual display.
+
+To edit: use `zo` to open the fold or use `:MermaidAsciiToggleBlock`
 
 ## License
 

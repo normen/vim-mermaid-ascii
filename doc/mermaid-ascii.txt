@@ -2,7 +2,7 @@
 
 Author:  normen
 License: MIT
-Version: 1.0.0
+Version: 2.0.0
 
 ==============================================================================
 CONTENTS                                            *mermaid-ascii-contents*
@@ -20,13 +20,14 @@ CONTENTS                                            *mermaid-ascii-contents*
 1. Introduction                                 *mermaid-ascii-introduction*
 
 vim-mermaid-ascii is a Vim plugin that renders Mermaid diagrams as ASCII art
-inline in your buffer using the mermaid-ascii tool.
+using Vim's folding mechanism. The rendered diagrams are display-only - your
+original mermaid code is never modified in the buffer.
 
 Features:
-  * Render ```mermaid``` code blocks as ASCII art
-  * Automatically show original code when cursor enters a rendered block
-  * Re-render when cursor leaves the block after editing
-  * Toggle between rendered and source views
+  * Render ```mermaid``` code blocks as ASCII art using folds
+  * Buffer content is never modified - safe to save!
+  * Toggle individual blocks or all blocks at once
+  * Original code is always preserved
 
 ==============================================================================
 2. Requirements                                 *mermaid-ascii-requirements*
@@ -75,31 +76,36 @@ Then run: >
     :MermaidAsciiRender
 <
 
-The mermaid code block will be replaced with ASCII art. Move your cursor
-into the rendered diagram to see the original code for editing. When you
-move the cursor out, it will re-render automatically.
+The mermaid code block will be folded and display ASCII art. The actual
+buffer content remains unchanged - only the display changes!
 
-To disable auto-rendering, run: >
-    :MermaidAsciiUnrender
+To edit a diagram: >
+    zo                          " Open the fold (standard Vim command)
+    :MermaidAsciiToggleBlock    " Or toggle the current block
 <
-This will restore the original code and disable the auto-render behavior.
-To re-enable, run :MermaidAsciiRender again.
+
+Edit the mermaid code, then re-render with :MermaidAsciiRender or toggle
+the block again.
+
+IMPORTANT: When you save the file (:w), only the original mermaid code is
+saved. The rendered ASCII art is display-only and never written to the file.
 
 ==============================================================================
 5. Commands                                         *mermaid-ascii-commands*
 
 :MermaidAsciiRender                                    *:MermaidAsciiRender*
-    Render all mermaid blocks in the current buffer as ASCII art.
+    Render all mermaid blocks in the current buffer as folded ASCII art.
+    The buffer content is not modified.
 
 :MermaidAsciiUnrender                                *:MermaidAsciiUnrender*
-    Restore all rendered blocks to their original mermaid code.
+    Remove all folds, showing the original mermaid code.
 
 :MermaidAsciiToggle                                    *:MermaidAsciiToggle*
-    Toggle between rendered and original state for all blocks.
+    Toggle between rendered (folded) and original state for all blocks.
 
 :MermaidAsciiToggleBlock                          *:MermaidAsciiToggleBlock*
     Toggle the current block under the cursor between rendered and original
-    state. Useful for manually toggling individual blocks.
+    state. Useful for working with individual blocks.
 
 ==============================================================================
 6. Mappings                                         *mermaid-ascii-mappings*
@@ -135,19 +141,6 @@ Then define your own: >
     Additional options to pass to mermaid-ascii.
     Default: '' >
         let g:mermaid_ascii_options = '--borderPadding 2 --paddingX 8'
-<
-
-*g:mermaid_ascii_no_auto*
-    Disable automatic rendering/unrendering on cursor movement.
-    Default: 0 >
-        let g:mermaid_ascii_no_auto = 1
-<
-
-*g:mermaid_ascii_auto_toggle*
-    Enable/disable auto-toggle when cursor enters/leaves rendered blocks.
-    When disabled, use :MermaidAsciiToggleBlock to manually toggle blocks.
-    Default: 1 >
-        let g:mermaid_ascii_auto_toggle = 0
 <
 
 *g:mermaid_ascii_no_mappings*

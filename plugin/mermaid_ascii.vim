@@ -1,6 +1,6 @@
 " vim-mermaid-ascii - Render mermaid diagrams as ASCII art
 " Maintainer: normen
-" Version: 1.0.0
+" Version: 2.0.0
 
 if exists('g:loaded_mermaid_ascii')
   finish
@@ -20,14 +20,6 @@ if !exists('g:mermaid_ascii_options')
   let g:mermaid_ascii_options = ''
 endif
 
-if !exists('g:mermaid_ascii_no_auto')
-  let g:mermaid_ascii_no_auto = 0
-endif
-
-if !exists('g:mermaid_ascii_auto_toggle')
-  let g:mermaid_ascii_auto_toggle = 1
-endif
-
 " Commands
 command! MermaidAsciiRender call mermaid_ascii#RenderAll()
 command! MermaidAsciiUnrender call mermaid_ascii#UnrenderAll()
@@ -40,14 +32,6 @@ if !exists('g:mermaid_ascii_no_mappings') || !g:mermaid_ascii_no_mappings
   nnoremap <silent> <Leader>mu :MermaidAsciiUnrender<CR>
   nnoremap <silent> <Leader>mt :MermaidAsciiToggle<CR>
   nnoremap <silent> <Leader>mb :MermaidAsciiToggleBlock<CR>
-endif
-
-" Auto commands for cursor movement
-if !g:mermaid_ascii_no_auto
-  augroup MermaidAscii
-    autocmd!
-    autocmd CursorMoved,CursorMovedI * call mermaid_ascii#OnCursorMoved()
-  augroup END
 endif
 
 " Restore cpoptions
