@@ -123,12 +123,26 @@ endfunction
 
 " Update an existing render block
 function! mermaid_ascii#UpdateRenderBlock(block)
+  " Get current content from buffer
+  let current_content = getline(a:block.mermaid_start + 1, a:block.mermaid_end - 1)
+  
+  " Check if content actually changed
+  if current_content == a:block.content
+    " No changes, don't update
+    return 0
+  endif
+  
   " Render the mermaid content
-  let rendered = mermaid_ascii#RenderMermaid(a:block.content)
+  let rendered = mermaid_ascii#RenderMermaid(current_content)
   
   if empty(rendered)
     return 0
   endif
+  
+  " Save cursor position and view
+  let save_cursor = getcurpos()
+  let save_view = winsaveview()
+  let save_modified = &modified
   
   " Delete old render block content (keep the markers)
   let old_content_start = a:block.render_start + 1
@@ -140,6 +154,15 @@ function! mermaid_ascii#UpdateRenderBlock(block)
   
   " Insert new rendered content
   call append(a:block.render_start, rendered)
+  
+  " Restore cursor position and view
+  call winrestview(save_view)
+  call setpos('.', save_cursor)
+  
+  " Restore modified state if content didn't actually change
+  if !save_modified
+    set nomodified
+  endif
   
   return 1
 endfunction
@@ -261,6 +284,9 @@ function! mermaid_ascii#OnCursorMoved()
   let blocks = mermaid_ascii#FindMermaidBlocks()
   let lnum = line('.')
   
+  " Track if we're in any mermaid block
+  let in_any_block = 0
+  
   for block in blocks
     if !block.rendered
       continue
@@ -268,25 +294,26 @@ function! mermaid_ascii#OnCursorMoved()
     
     let in_mermaid = lnum >= block.mermaid_start && lnum <= block.mermaid_end
     
-    " If cursor just left a mermaid block, update its render
-    if !in_mermaid && exists('b:last_in_mermaid_block')
-      if b:last_in_mermaid_block == block.mermaid_start
-        " Update the content from buffer
-        let new_content = getline(block.mermaid_start + 1, block.mermaid_end - 1)
-        let block.content = new_content
-        call mermaid_ascii#UpdateRenderBlock(block)
-      endif
-    endif
-    
-    " Track which block we're in
     if in_mermaid
+      let in_any_block = 1
+      " Track which block we're in
       let b:last_in_mermaid_block = block.mermaid_start
       return
     endif
   endfor
   
-  " Not in any block
-  if exists('b:last_in_mermaid_block')
+  " Only update if we just left a mermaid block
+  if exists('b:last_in_mermaid_block') && !in_any_block
+    " Find the block we were in
+    for block in blocks
+      if block.rendered && b:last_in_mermaid_block == block.mermaid_start
+        " Update the content and render
+        call mermaid_ascii#UpdateRenderBlock(block)
+        break
+      endif
+    endfor
+    
+    " Clear the tracking variable
     unlet b:last_in_mermaid_block
   endif
 endfunction
