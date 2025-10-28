@@ -145,7 +145,6 @@ function! mermaid_ascii#UpdateRenderBlock(block)
   " Save cursor position and view
   let save_cursor = getcurpos()
   let save_view = winsaveview()
-  let save_modified = &modified
   
   " Delete old render block content (keep the markers)
   let old_content_start = a:block.render_start + 1
@@ -162,10 +161,8 @@ function! mermaid_ascii#UpdateRenderBlock(block)
   call winrestview(save_view)
   call setpos('.', save_cursor)
   
-  " Restore modified state if content didn't actually change
-  if !save_modified
-    set nomodified
-  endif
+  " File has been modified (we changed the render block)
+  " Don't restore the modified flag - let it be set
   
   return 1
 endfunction
