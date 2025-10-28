@@ -73,7 +73,9 @@ cp -r vim-mermaid-ascii/autoload ~/.vim/
 
 ### Automatic Behavior
 
-When you move your cursor into a rendered mermaid block, it automatically shows the original code for editing. When you leave the block, it re-renders the ASCII art.
+When you run `:MermaidAsciiRender`, auto-rendering is enabled. This means when you move your cursor into a rendered mermaid block, it automatically shows the original code for editing. When you move the cursor out, it re-renders the ASCII art.
+
+When you run `:MermaidAsciiUnrender`, auto-rendering is disabled. The blocks stay as mermaid code and won't auto-render when you move your cursor.
 
 ## Configuration
 

@@ -79,6 +79,12 @@ The mermaid code block will be replaced with ASCII art. Move your cursor
 into the rendered diagram to see the original code for editing. When you
 move the cursor out, it will re-render automatically.
 
+To disable auto-rendering, run: >
+    :MermaidAsciiUnrender
+<
+This will restore the original code and disable the auto-render behavior.
+To re-enable, run :MermaidAsciiRender again.
+
 ==============================================================================
 5. Commands                                         *mermaid-ascii-commands*
 

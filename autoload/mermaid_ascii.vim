@@ -6,6 +6,7 @@
 let s:mermaid_blocks = {}
 let s:rendered_state = {}
 let s:current_block = -1
+let s:auto_render_enabled = 0
 
 " Find all mermaid blocks in the buffer
 function! mermaid_ascii#FindMermaidBlocks()
@@ -89,15 +90,21 @@ function! mermaid_ascii#RenderBlock(block_idx)
   " Store the original content
   let s:mermaid_blocks[a:block_idx].rendered = rendered
   
+  " Save modified state
+  let l:was_modified = &modified
+  
   " Replace the lines
   let start = block.start
   let end = block.end
   
-  " Delete the block (including ``` markers)
-  execute start . ',' . end . 'delete'
+  " Delete the block (including ``` markers) without triggering autocmds
+  noautocmd execute start . ',' . end . 'delete'
   
   " Insert rendered content at the same position
-  call append(start - 1, rendered)
+  noautocmd call append(start - 1, rendered)
+  
+  " Restore modified state
+  let &modified = l:was_modified
   
   " Update block positions
   let line_diff = len(rendered) - (end - start + 1)
@@ -129,16 +136,22 @@ function! mermaid_ascii#UnrenderBlock(block_idx)
     return
   endif
   
+  " Save modified state
+  let l:was_modified = &modified
+  
   " Get positions
   let start = block.rendered_start
   let end = block.rendered_end
   
-  " Delete rendered lines
-  execute start . ',' . end . 'delete'
+  " Delete rendered lines without triggering autocmds
+  noautocmd execute start . ',' . end . 'delete'
   
   " Restore original mermaid block
   let original = ['```mermaid'] + block.content + ['```']
-  call append(start - 1, original)
+  noautocmd call append(start - 1, original)
+  
+  " Restore modified state
+  let &modified = l:was_modified
   
   " Update positions
   let line_diff = len(original) - (end - start + 1)
@@ -193,7 +206,10 @@ function! mermaid_ascii#RenderAll()
     call mermaid_ascii#RenderBlock(idx)
   endfor
   
-  echo 'Rendered ' . len(blocks) . ' mermaid block(s)'
+  " Enable auto-rendering
+  let s:auto_render_enabled = 1
+  
+  echo 'Rendered ' . len(blocks) . ' mermaid block(s) - auto-rendering enabled'
 endfunction
 
 " Unrender all mermaid blocks
@@ -203,12 +219,15 @@ function! mermaid_ascii#UnrenderAll()
     return
   endif
   
+  " Disable auto-rendering
+  let s:auto_render_enabled = 0
+  
   " Unrender each block (in reverse order)
   for idx in reverse(sort(keys(s:mermaid_blocks), {a, b -> a - b}))
     call mermaid_ascii#UnrenderBlock(idx)
   endfor
   
-  echo 'Unrendered all mermaid blocks'
+  echo 'Unrendered all mermaid blocks - auto-rendering disabled'
 endfunction
 
 " Toggle rendering state
@@ -222,7 +241,7 @@ function! mermaid_ascii#Toggle()
     endif
   endfor
   
-  if has_rendered
+  if has_rendered || s:auto_render_enabled
     call mermaid_ascii#UnrenderAll()
   else
     call mermaid_ascii#RenderAll()
@@ -252,6 +271,11 @@ endfunction
 
 " Handle cursor movement
 function! mermaid_ascii#OnCursorMoved()
+  " Only process if auto-rendering is enabled
+  if !s:auto_render_enabled
+    return
+  endif
+  
   let current_block = mermaid_ascii#GetBlockAtCursor()
   
   " If we moved into a rendered block, unrender it
