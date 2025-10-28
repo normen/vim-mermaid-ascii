@@ -1,26 +1,27 @@
 # vim-mermaid-ascii Features
 
+## Overview
+
+vim-mermaid-ascii renders Mermaid diagrams as ASCII art **without modifying the buffer**. The rendered diagrams are display-only using Vim's folding mechanism.
+
+## Key Principle: Buffer Never Modified
+
+**IMPORTANT**: The plugin uses Vim folds to display rendered ASCII art. Your original mermaid code is NEVER changed in the buffer. When you save the file, only the mermaid code is written - never the rendered ASCII art.
+
 ## Commands
 
 | Command | Description | Keybinding |
 |---------|-------------|------------|
-| `:MermaidAsciiRender` | Render all mermaid blocks and enable auto-rendering | `<Leader>mr` |
-| `:MermaidAsciiUnrender` | Restore all blocks to code and disable auto-rendering | `<Leader>mu` |
-| `:MermaidAsciiToggle` | Toggle all blocks and auto-rendering state | `<Leader>mt` |
-| `:MermaidAsciiToggleBlock` | Toggle current block only (manual control) | `<Leader>mb` |
+| `:MermaidAsciiRender` | Create folds showing ASCII art for all mermaid blocks | `<Leader>mr` |
+| `:MermaidAsciiUnrender` | Remove all folds, show original code | `<Leader>mu` |
+| `:MermaidAsciiToggle` | Toggle all blocks between folded/unfolded | `<Leader>mt` |
+| `:MermaidAsciiToggleBlock` | Toggle current block only | `<Leader>mb` |
 
 ## Configuration Options
 
 ```vim
 " Path to mermaid-ascii binary (default: 'mermaid-ascii')
 let g:mermaid_ascii_bin = 'mermaid-ascii'
-
-" Disable cursor movement auto-render/unrender (default: 0)
-let g:mermaid_ascii_no_auto = 0
-
-" Disable auto-toggle when cursor enters/leaves blocks (default: 1)
-" Set to 0 for manual block-level control
-let g:mermaid_ascii_auto_toggle = 1
 
 " Disable default keybindings (default: 0)
 let g:mermaid_ascii_no_mappings = 0
@@ -29,82 +30,116 @@ let g:mermaid_ascii_no_mappings = 0
 let g:mermaid_ascii_options = '--borderPadding 2 --paddingX 8'
 ```
 
-## Usage Modes
+## How It Works
 
-### Mode 1: Auto-Toggle (Default)
-```vim
-" This is the default behavior
-let g:mermaid_ascii_auto_toggle = 1
-```
+1. **Rendering**: Creates a fold over the ```mermaid``` block
+2. **Display**: Custom foldtext shows the rendered ASCII diagram
+3. **Editing**: Open the fold with `zo` (standard Vim) or `:MermaidAsciiToggleBlock`
+4. **Saving**: File always contains original mermaid code, never ASCII art
 
-1. Run `:MermaidAsciiRender` to render all blocks
-2. Cursor enters block → automatically shows code
-3. Cursor leaves block → automatically re-renders
-4. Run `:MermaidAsciiUnrender` to disable auto-rendering
+## Usage Workflow
 
-**Best for**: Quick viewing and occasional editing
-
-### Mode 2: Manual Toggle
-```vim
-" Disable auto-toggle for manual control
-let g:mermaid_ascii_auto_toggle = 0
-```
-
-1. Run `:MermaidAsciiRender` to render all blocks
-2. Use `<Leader>mb` to toggle individual blocks
-3. Blocks stay in rendered/unrendered state until manually toggled
-4. No automatic changes on cursor movement
-
-**Best for**: Precise control, editing multiple blocks, or reducing visual flickering
-
-### Mode 3: Fully Manual
-```vim
-" Disable all automatic behavior
-let g:mermaid_ascii_no_auto = 1
-```
-
-1. Use `:MermaidAsciiToggleBlock` or `<Leader>mb` for each block
-2. No cursor movement triggers
-3. Complete manual control
-
-**Best for**: Maximum control, performance-sensitive environments
-
-## Workflow Examples
-
-### Quick Preview Workflow
+### Basic Workflow
 ```
 1. Open file with mermaid blocks
-2. <Leader>mr (render all)
-3. Move cursor to view different diagrams
-4. <Leader>mb (toggle block to edit)
-5. <Leader>mb (toggle back when done)
+2. :MermaidAsciiRender          " Creates folds with ASCII art
+3. Navigate and view diagrams   " Folds show rendered output
+4. :w                           " Save - writes original mermaid code!
 ```
 
-### Editing Workflow
+### Editing a Diagram
 ```
-1. Open file
-2. <Leader>mr (render all)
-3. Move cursor into block to edit (auto-shows code if auto-toggle enabled)
-4. Edit the mermaid code
-5. Move cursor out (auto-renders if auto-toggle enabled)
+1. Position cursor on a rendered (folded) block
+2. zo                           " Open fold (standard Vim command)
+   OR
+   <Leader>mb                   " Toggle block
+3. Edit the mermaid code
+4. :MermaidAsciiRender          " Re-render
+   OR
+   <Leader>mb                   " Toggle block to re-render
 ```
 
-### Manual Control Workflow
-```
-" In .vimrc: let g:mermaid_ascii_auto_toggle = 0
+### Working with Folds
+Standard Vim fold commands work:
+- `zo` - Open fold under cursor
+- `zc` - Close fold under cursor
+- `za` - Toggle fold under cursor
+- `zR` - Open all folds
+- `zM` - Close all folds
 
-1. Open file
-2. <Leader>mr (render all blocks)
-3. Navigate to block you want to edit
-4. <Leader>mb (manually toggle to code)
-5. Edit the code
-6. <Leader>mb (manually toggle to render)
+## Example
+
+### Before Rendering
+```markdown
+# My Diagram
+
+```mermaid
+graph LR
+A --> B
+B --> C
 ```
+```
+
+### After :MermaidAsciiRender
+The mermaid block appears folded, displaying:
+```
+# My Diagram
+
+┌───┐     ┌───┐     ┌───┐
+│   │     │   │     │   │
+│ A ├────►│ B ├────►│ C │
+│   │     │   │     │   │
+└───┘     └───┘     └───┘
+```
+
+### When You Save
+The file written to disk contains:
+```markdown
+# My Diagram
+
+```mermaid
+graph LR
+A --> B
+B --> C
+```
+```
+
+**The ASCII art is never saved!**
 
 ## Technical Details
 
-- **No file modifications**: Rendering doesn't mark the file as modified
-- **State tracking**: Plugin remembers which blocks are rendered
-- **Position tracking**: Correctly handles line number changes
-- **Error handling**: Shows clear errors if mermaid-ascii is missing or diagrams fail to render
-- **Performance**: Uses `:noautocmd` to avoid triggering unnecessary autocmds
+- **Implementation**: Uses Vim's manual folding with custom foldtext
+- **Cache**: Rendered output cached per-buffer in memory
+- **Performance**: Only renders when explicitly requested
+- **Safety**: Buffer content never modified - fold is display-only
+- **Compatibility**: Works with Vim 8.0+ and Neovim
+
+## Migration from v1.x
+
+Version 2.0 is a breaking change. The old version modified the buffer content.
+
+### What Changed
+- Rendering now uses folds instead of replacing buffer text
+- Removed auto-toggle on cursor movement
+- Removed configuration options: `g:mermaid_ascii_no_auto`, `g:mermaid_ascii_auto_toggle`
+- Buffer is never modified - rendered diagrams are display-only
+
+### Benefits
+- Never accidentally save ASCII art instead of mermaid code
+- No buffer modification flag issues
+- Simpler, more predictable behavior
+- Uses native Vim folding features
+
+### What You Need to Do
+If upgrading from v1.x:
+1. Remove `g:mermaid_ascii_no_auto` and `g:mermaid_ascii_auto_toggle` from your vimrc
+2. Learn fold commands: `zo`, `zc`, `za` for opening/closing folds
+3. Use `:MermaidAsciiToggleBlock` instead of relying on auto-toggle
+
+## Advantages of Fold-Based Approach
+
+✅ **Safety**: Impossible to accidentally save rendered ASCII art
+✅ **Simplicity**: Uses standard Vim folding - familiar to users  
+✅ **No Side Effects**: Buffer modification state unaffected
+✅ **Performance**: Only renders on explicit command
+✅ **Flexibility**: Standard fold commands work as expected
