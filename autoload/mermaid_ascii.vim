@@ -2,12 +2,24 @@
 " Maintainer: normen
 " Version: 2.0.0
 " 
-" This version uses folding with custom foldtext to display rendered diagrams
-" without modifying the actual buffer content.
+" This version uses text properties with virtual text to display rendered diagrams
 
 " State tracking
 let s:mermaid_blocks = {}
-let s:fold_cache = {}
+let s:rendered_blocks = {}
+let s:prop_type = 'mermaid_ascii_block'
+
+" Initialize text property type
+function! s:InitPropType()
+  let bufnr = bufnr('%')
+  if !empty(prop_type_get(s:prop_type, {'bufnr': bufnr}))
+    call prop_type_delete(s:prop_type, {'bufnr': bufnr})
+  endif
+  call prop_type_add(s:prop_type, {
+    \ 'bufnr': bufnr,
+    \ 'highlight': 'Conceal'
+    \ })
+endfunction
 
 " Find all mermaid blocks in the buffer
 function! mermaid_ascii#FindMermaidBlocks()
@@ -72,28 +84,45 @@ function! mermaid_ascii#RenderMermaid(content)
   return output
 endfunction
 
-" Custom fold text function that displays one line at a time from rendered output
-function! mermaid_ascii#FoldText()
-  let fold_start = v:foldstart
-  let fold_end = v:foldend
+" Add virtual text using text properties
+function! s:AddVirtualText(start_line, end_line, rendered_lines)
+  call s:InitPropType()
   
-  " Check if this fold has cached rendered content
-  let cache_key = bufnr('%') . ':' . fold_start . '-' . fold_end
-  if has_key(s:fold_cache, cache_key)
-    let lines = s:fold_cache[cache_key]
-    " Calculate which line of the rendered output to show
-    " v:foldstart is the current line in the fold being displayed
-    let rel_line = v:foldstart - fold_start
-    if rel_line < len(lines)
-      return lines[rel_line]
-    endif
-  endif
+  " Add virtual text below the first line of the mermaid block
+  " Each rendered line becomes a separate virtual text property
+  for idx in range(len(a:rendered_lines))
+    call prop_add(a:start_line, 0, {
+      \ 'type': s:prop_type,
+      \ 'text': a:rendered_lines[idx],
+      \ 'text_align': 'below'
+      \ })
+  endfor
   
-  " Default fallback - show original line
-  return getline(v:foldstart)
+  " Conceal all lines in the mermaid block
+  for lnum in range(a:start_line, a:end_line)
+    " Use matchaddpos to conceal these lines
+    call matchaddpos('Conceal', [lnum], 10, -1, {'conceal': ' '})
+  endfor
+  
+  " Set conceallevel to hide the original text
+  setlocal conceallevel=3
+  setlocal concealcursor=nvic
 endfunction
 
-" Render a single block by creating a fold
+" Remove virtual text and properties
+function! s:RemoveVirtualText(start_line, end_line)
+  " Remove text properties
+  call prop_remove({
+    \ 'type': s:prop_type,
+    \ 'bufnr': bufnr('%'),
+    \ 'all': v:true
+    \ }, a:start_line, a:end_line)
+  
+  " Clear conceal matches
+  call clearmatches()
+endfunction
+
+" Render a single block
 function! mermaid_ascii#RenderBlock(start, end, content)
   " Render the mermaid content
   let rendered = mermaid_ascii#RenderMermaid(a:content)
@@ -102,41 +131,37 @@ function! mermaid_ascii#RenderBlock(start, end, content)
     return 0
   endif
   
-  " Cache the rendered output
-  let cache_key = bufnr('%') . ':' . a:start . '-' . a:end
-  let s:fold_cache[cache_key] = rendered
+  " Store in state
+  let block_key = bufnr('%') . ':' . a:start . '-' . a:end
+  let s:rendered_blocks[block_key] = {
+    \ 'start': a:start,
+    \ 'end': a:end,
+    \ 'rendered': rendered
+    \ }
   
-  " Create a fold for this block
-  execute a:start . ',' . a:end . 'fold'
-  
-  " Close the fold to show rendered content
-  execute a:start . 'foldclose'
+  " Add virtual text
+  call s:AddVirtualText(a:start, a:end, rendered)
   
   return 1
 endfunction
 
-" Unrender a block by removing the fold
+" Unrender a block
 function! mermaid_ascii#UnrenderBlock(start, end)
-  let cache_key = bufnr('%') . ':' . a:start . '-' . a:end
-  if has_key(s:fold_cache, cache_key)
-    unlet s:fold_cache[cache_key]
+  let block_key = bufnr('%') . ':' . a:start . '-' . a:end
+  
+  if !has_key(s:rendered_blocks, block_key)
+    return
   endif
   
-  " Delete the fold
-  execute a:start . ',' . a:end . 'foldopen!'
+  " Remove virtual text
+  call s:RemoveVirtualText(a:start, a:end)
+  
+  " Remove from state
+  unlet s:rendered_blocks[block_key]
 endfunction
 
 " Render all mermaid blocks in the buffer
 function! mermaid_ascii#RenderAll()
-  " Save current settings
-  let w:mermaid_saved_fdm = get(w:, 'mermaid_saved_fdm', &l:foldmethod)
-  let w:mermaid_saved_fen = get(w:, 'mermaid_saved_fen', &l:foldenable)
-  
-  " Set up folding
-  setlocal foldmethod=manual
-  setlocal foldenable
-  setlocal foldtext=mermaid_ascii#FoldText()
-  
   " Find all blocks
   let blocks = mermaid_ascii#FindMermaidBlocks()
   
@@ -145,59 +170,51 @@ function! mermaid_ascii#RenderAll()
     return
   endif
   
-  " Clear existing folds
-  normal! zE
+  " Clear existing rendered blocks
+  call mermaid_ascii#UnrenderAll()
   
   " Render each block
-  let rendered_rendered_count . 0
+  let num_rendered = 0
   for block in blocks
     if mermaid_ascii#RenderBlock(block.start, block.end, block.content)
-      let rendered_count += 1
+      let num_rendered += 1
     endif
   endfor
   
-  echo 'Rendered ' . rendered_count . ' mermaid block(s) - original content preserved'
+  echo 'Rendered ' . num_rendered . ' mermaid block(s) - original content preserved'
 endfunction
 
 " Unrender all mermaid blocks
 function! mermaid_ascii#UnrenderAll()
-  " Clear all folds
-  normal! zE
-  
-  " Clear cache for this buffer
+  " Remove all properties for this buffer
   let buf_prefix = bufnr('%') . ':'
-  for key in keys(s:fold_cache)
+  for key in keys(s:rendered_blocks)
     if key =~# '^' . buf_prefix
-      unlet s:fold_cache[key]
+      let block = s:rendered_blocks[key]
+      call s:RemoveVirtualText(block.start, block.end)
+      unlet s:rendered_blocks[key]
     endif
   endfor
   
-  " Restore settings if saved
-  if exists('w:mermaid_saved_fdm')
-    let &l:foldmethod = w:mermaid_saved_fdm
-    unlet w:mermaid_saved_fdm
-  endif
-  if exists('w:mermaid_saved_fen')
-    let &l:foldenable = w:mermaid_saved_fen
-    unlet w:mermaid_saved_fen
-  endif
+  " Reset conceal settings
+  setlocal conceallevel=0
   
   echo 'Unrendered all mermaid blocks'
 endfunction
 
 " Toggle rendering state
 function! mermaid_ascii#Toggle()
-  " Check if we have any folds in cache for this buffer
+  " Check if we have any rendered blocks for this buffer
   let buf_prefix = bufnr('%') . ':'
-  let has_folds = 0
-  for key in keys(s:fold_cache)
+  let has_rendered = 0
+  for key in keys(s:rendered_blocks)
     if key =~# '^' . buf_prefix
-      let has_folds = 1
+      let has_rendered = 1
       break
     endif
   endfor
   
-  if has_folds
+  if has_rendered
     call mermaid_ascii#UnrenderAll()
   else
     call mermaid_ascii#RenderAll()
@@ -218,22 +235,14 @@ function! mermaid_ascii#ToggleBlock()
   " Find block containing current line
   for block in blocks
     if lnum >= block.start && lnum <= block.end
-      let cache_key = bufnr('%') . ':' . block.start . '-' . block.end
+      let block_key = bufnr('%') . ':' . block.start . '-' . block.end
       
-      if has_key(s:fold_cache, cache_key)
+      if has_key(s:rendered_blocks, block_key)
         " Block is rendered, unrender it
         call mermaid_ascii#UnrenderBlock(block.start, block.end)
         echo 'Block unrendered'
       else
         " Block is not rendered, render it
-        if &l:foldmethod !=# 'manual'
-          let w:mermaid_saved_fdm = &l:foldmethod
-          let w:mermaid_saved_fen = &l:foldenable
-          setlocal foldmethod=manual
-          setlocal foldenable
-          setlocal foldtext=mermaid_ascii#FoldText()
-        endif
-        
         if mermaid_ascii#RenderBlock(block.start, block.end, block.content)
           echo 'Block rendered'
         endif
