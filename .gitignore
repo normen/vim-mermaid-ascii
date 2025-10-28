@@ -1,0 +1,14 @@
+# Vim
+*.swp
+*.swo
+*~
+.*.swp
+.*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test files
+test.md
+test_*.md

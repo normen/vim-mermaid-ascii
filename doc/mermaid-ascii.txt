@@ -1,0 +1,149 @@
+*mermaid-ascii.txt*  Render Mermaid diagrams as ASCII art in Vim
+
+Author:  normen
+License: MIT
+Version: 1.0.0
+
+==============================================================================
+CONTENTS                                            *mermaid-ascii-contents*
+
+    1. Introduction ............... |mermaid-ascii-introduction|
+    2. Requirements ............... |mermaid-ascii-requirements|
+    3. Installation ............... |mermaid-ascii-installation|
+    4. Usage ...................... |mermaid-ascii-usage|
+    5. Commands ................... |mermaid-ascii-commands|
+    6. Mappings ................... |mermaid-ascii-mappings|
+    7. Configuration .............. |mermaid-ascii-configuration|
+    8. About ...................... |mermaid-ascii-about|
+
+==============================================================================
+1. Introduction                                 *mermaid-ascii-introduction*
+
+vim-mermaid-ascii is a Vim plugin that renders Mermaid diagrams as ASCII art
+inline in your buffer using the mermaid-ascii tool.
+
+Features:
+  * Render ```mermaid``` code blocks as ASCII art
+  * Automatically show original code when cursor enters a rendered block
+  * Re-render when cursor leaves the block after editing
+  * Toggle between rendered and source views
+
+==============================================================================
+2. Requirements                                 *mermaid-ascii-requirements*
+
+  * Vim 8.0+ or Neovim
+  * mermaid-ascii binary installed and in your PATH
+    https://github.com/AlexanderGrooff/mermaid-ascii
+
+==============================================================================
+3. Installation                                 *mermaid-ascii-installation*
+
+Using vim-plug: >
+    Plug 'normen/vim-mermaid-ascii'
+<
+
+Using Vundle: >
+    Plugin 'normen/vim-mermaid-ascii'
+<
+
+Using Pathogen: >
+    cd ~/.vim/bundle
+    git clone https://github.com/normen/vim-mermaid-ascii.git
+<
+
+Manual installation: >
+    git clone https://github.com/normen/vim-mermaid-ascii.git
+    cp -r vim-mermaid-ascii/plugin ~/.vim/
+    cp -r vim-mermaid-ascii/autoload ~/.vim/
+<
+
+==============================================================================
+4. Usage                                               *mermaid-ascii-usage*
+
+Create a markdown file with mermaid code blocks: >
+
+    # My Diagram
+    
+    ```mermaid
+    graph LR
+    A --> B
+    B --> C
+    ```
+<
+
+Then run: >
+    :MermaidAsciiRender
+<
+
+The mermaid code block will be replaced with ASCII art. Move your cursor
+into the rendered diagram to see the original code for editing. When you
+move the cursor out, it will re-render automatically.
+
+==============================================================================
+5. Commands                                         *mermaid-ascii-commands*
+
+:MermaidAsciiRender                                    *:MermaidAsciiRender*
+    Render all mermaid blocks in the current buffer as ASCII art.
+
+:MermaidAsciiUnrender                                *:MermaidAsciiUnrender*
+    Restore all rendered blocks to their original mermaid code.
+
+:MermaidAsciiToggle                                    *:MermaidAsciiToggle*
+    Toggle between rendered and original state for all blocks.
+
+==============================================================================
+6. Mappings                                         *mermaid-ascii-mappings*
+
+Default mappings (in normal mode):
+
+<Leader>mr          Render all mermaid blocks
+<Leader>mu          Unrender all mermaid blocks
+<Leader>mt          Toggle rendering
+
+To disable default mappings, add to your vimrc: >
+    let g:mermaid_ascii_no_mappings = 1
+<
+
+Then define your own: >
+    nnoremap <Leader>ma :MermaidAsciiRender<CR>
+    nnoremap <Leader>ms :MermaidAsciiUnrender<CR>
+    nnoremap <Leader>mt :MermaidAsciiToggle<CR>
+<
+
+==============================================================================
+7. Configuration                               *mermaid-ascii-configuration*
+
+*g:mermaid_ascii_bin*
+    Path to the mermaid-ascii binary.
+    Default: 'mermaid-ascii' >
+        let g:mermaid_ascii_bin = '/usr/local/bin/mermaid-ascii'
+<
+
+*g:mermaid_ascii_options*
+    Additional options to pass to mermaid-ascii.
+    Default: '' >
+        let g:mermaid_ascii_options = '--borderPadding 2 --paddingX 8'
+<
+
+*g:mermaid_ascii_no_auto*
+    Disable automatic rendering/unrendering on cursor movement.
+    Default: 0 >
+        let g:mermaid_ascii_no_auto = 1
+<
+
+*g:mermaid_ascii_no_mappings*
+    Disable default key mappings.
+    Default: 0 >
+        let g:mermaid_ascii_no_mappings = 1
+<
+
+==============================================================================
+8. About                                               *mermaid-ascii-about*
+
+vim-mermaid-ascii integrates with mermaid-ascii by AlexanderGrooff:
+https://github.com/AlexanderGrooff/mermaid-ascii
+
+Report bugs and contribute at:
+https://github.com/normen/vim-mermaid-ascii
+
+vim:tw=78:ts=8:ft=help:norl:

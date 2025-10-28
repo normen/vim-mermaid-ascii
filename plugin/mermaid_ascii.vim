@@ -1,0 +1,49 @@
+" vim-mermaid-ascii - Render mermaid diagrams as ASCII art
+" Maintainer: normen
+" Version: 1.0.0
+
+if exists('g:loaded_mermaid_ascii')
+  finish
+endif
+let g:loaded_mermaid_ascii = 1
+
+" Save cpoptions
+let s:save_cpo = &cpo
+set cpo&vim
+
+" Configuration
+if !exists('g:mermaid_ascii_bin')
+  let g:mermaid_ascii_bin = 'mermaid-ascii'
+endif
+
+if !exists('g:mermaid_ascii_options')
+  let g:mermaid_ascii_options = ''
+endif
+
+if !exists('g:mermaid_ascii_no_auto')
+  let g:mermaid_ascii_no_auto = 0
+endif
+
+" Commands
+command! MermaidAsciiRender call mermaid_ascii#RenderAll()
+command! MermaidAsciiUnrender call mermaid_ascii#UnrenderAll()
+command! MermaidAsciiToggle call mermaid_ascii#Toggle()
+
+" Default mappings
+if !exists('g:mermaid_ascii_no_mappings') || !g:mermaid_ascii_no_mappings
+  nnoremap <silent> <Leader>mr :MermaidAsciiRender<CR>
+  nnoremap <silent> <Leader>mu :MermaidAsciiUnrender<CR>
+  nnoremap <silent> <Leader>mt :MermaidAsciiToggle<CR>
+endif
+
+" Auto commands for cursor movement
+if !g:mermaid_ascii_no_auto
+  augroup MermaidAscii
+    autocmd!
+    autocmd CursorMoved,CursorMovedI * call mermaid_ascii#OnCursorMoved()
+  augroup END
+endif
+
+" Restore cpoptions
+let &cpo = s:save_cpo
+unlet s:save_cpo
