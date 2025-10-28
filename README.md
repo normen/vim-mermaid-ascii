@@ -1,17 +1,35 @@
 # vim-mermaid-ascii
 
-A Vim plugin that renders Mermaid diagrams as ASCII art inline using [mermaid-ascii](https://github.com/AlexanderGrooff/mermaid-ascii), **without modifying the buffer content**.
+A Vim plugin that renders Mermaid diagrams as ASCII art using [mermaid-ascii](https://github.com/AlexanderGrooff/mermaid-ascii). The rendered diagrams are **saved in the file** in special code blocks, making them viewable without the plugin.
 
 ## Features
 
-- **Visual-only rendering**: Diagrams are displayed using Vim's folding mechanism - your mermaid code is never modified
-- **Save safely**: The file always contains the original mermaid code, rendered diagrams are display-only
-- **Toggle rendering**: Show/hide ASCII art with simple commands
-- **Block-level control**: Render individual diagrams or all at once
+- **Persistent rendering**: ASCII art is saved in ````mermaid-ascii-render` blocks below your mermaid code
+- **Viewable anywhere**: Rendered diagrams are part of the file - view/print without Vim or the plugin
+- **Auto-update**: When you edit mermaid code and move the cursor away, the render block updates automatically
+- **Toggle control**: Add/remove render blocks for individual diagrams or all at once
 
 ## How It Works
 
-The plugin uses Vim's folding feature with custom fold text to display rendered ASCII diagrams. The actual buffer content (what gets saved to disk) **always** contains your original ```mermaid``` code blocks. The rendered ASCII art is purely visual.
+The plugin inserts a special code block after each mermaid diagram:
+
+```markdown
+```mermaid
+graph LR
+A --> B
+B --> C
+```
+
+```mermaid-ascii-render
+┌───┐     ┌───┐     ┌───┐
+│   │     │   │     │   │
+│ A ├────►│ B ├────►│ C │
+│   │     │   │     │   │
+└───┘     └───┘     └───┘
+```
+```
+
+**Edit the mermaid block, not the render block!** The render block updates automatically when you move your cursor away.
 
 ## Requirements
 
@@ -66,33 +84,36 @@ cp -r vim-mermaid-ascii/autoload ~/.vim/
 
 ### Commands
 
-- `:MermaidAsciiRender` - Render all mermaid blocks as folds
-- `:MermaidAsciiUnrender` - Remove all folds, show original code
-- `:MermaidAsciiToggle` - Toggle between rendered and original state  
-- `:MermaidAsciiToggleBlock` - Toggle the current block only
+- `:MermaidAsciiRender` - Create/update render blocks for all mermaid diagrams
+- `:MermaidAsciiUnrender` - Remove all render blocks  
+- `:MermaidAsciiToggle` - Toggle render blocks for all diagrams
+- `:MermaidAsciiToggleBlock` - Toggle render block for current diagram
 
 ### Default Keybindings
 
-- `<Leader>mr` - Render mermaid blocks
-- `<Leader>mu` - Unrender mermaid blocks  
-- `<Leader>mt` - Toggle rendering
-- `<Leader>mb` - Toggle current block
+- `<Leader>mr` - Render all diagrams
+- `<Leader>mu` - Unrender all diagrams
+- `<Leader>mt` - Toggle all
+- `<Leader>mb` - Toggle current diagram
 
 ### How to Use
 
-1. Open a file with mermaid code blocks
-2. Run `:MermaidAsciiRender` - mermaid blocks become folded and display ASCII art
-3. To edit a block: position cursor on the fold and use `zo` to open it, or use `:MermaidAsciiToggleBlock`
-4. Edit the mermaid code as normal
-5. Re-render with `:MermaidAsciiRender` or toggle the block
+1. Write your mermaid code in ` ```mermaid ` blocks
+2. Run `:MermaidAsciiRender` - render blocks are inserted below each diagram
+3. Edit the mermaid code (not the render block!)
+4. Move cursor away - render block updates automatically
+5. Save the file - both mermaid code and renders are saved
 
-**Important**: When you save the file (`:w`), only the original mermaid code is saved. The rendered ASCII art is display-only!
+**The render blocks are viewable in any text editor, GitHub, or when printed!**
 
 ## Configuration
 
 ```vim
 " Set the path to mermaid-ascii binary (default: 'mermaid-ascii')
 let g:mermaid_ascii_bin = '/path/to/mermaid-ascii'
+
+" Disable auto-update when leaving mermaid blocks (default: 1)
+let g:mermaid_ascii_auto_update = 0
 
 " Disable default keybindings (default: 0)
 let g:mermaid_ascii_no_mappings = 1
@@ -103,7 +124,7 @@ let g:mermaid_ascii_options = '--borderPadding 2 --paddingX 8'
 
 ## Example
 
-Given this markdown with a mermaid block:
+Original markdown:
 
 ~~~markdown
 # My Diagram
@@ -116,21 +137,28 @@ C --> D
 ```
 ~~~
 
-After running `:MermaidAsciiRender`, the mermaid block becomes a fold displaying:
+After `:MermaidAsciiRender`:
 
-```
+~~~markdown
 # My Diagram
 
+```mermaid
+graph LR
+A --> B
+B --> C
+C --> D
+```
+
+```mermaid-ascii-render
 ┌───┐     ┌───┐     ┌───┐     ┌───┐
 │   │     │   │     │   │     │   │
 │ A ├────►│ B ├────►│ C ├────►│ D │
 │   │     │   │     │   │     │   │
 └───┘     └───┘     └───┘     └───┘
 ```
+~~~
 
-But when you save the file, it contains the original mermaid code! The ASCII art is just a visual display.
-
-To edit: use `zo` to open the fold or use `:MermaidAsciiToggleBlock`
+**Both blocks are saved!** The ASCII art is viewable in GitHub, any text editor, or when printed.
 
 ## License
 

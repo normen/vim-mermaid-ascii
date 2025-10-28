@@ -1,51 +1,64 @@
 " vim-mermaid-ascii - Autoload functions
 " Maintainer: normen
-" Version: 2.0.0
+" Version: 3.0.0
 " 
-" This version uses text properties with virtual text to display rendered diagrams
+" This version inserts rendered ASCII in a separate code block below the mermaid block
 
 " State tracking
-let s:mermaid_blocks = {}
-let s:rendered_blocks = {}
-let s:prop_type = 'mermaid_ascii_block'
-
-" Initialize text property type
-function! s:InitPropType()
-  let bufnr = bufnr('%')
-  if !empty(prop_type_get(s:prop_type, {'bufnr': bufnr}))
-    call prop_type_delete(s:prop_type, {'bufnr': bufnr})
-  endif
-  call prop_type_add(s:prop_type, {
-    \ 'bufnr': bufnr,
-    \ 'highlight': 'Conceal'
-    \ })
-endfunction
+let s:auto_render_enabled = 0
 
 " Find all mermaid blocks in the buffer
 function! mermaid_ascii#FindMermaidBlocks()
   let blocks = []
-  let in_block = 0
+  let in_mermaid = 0
+  let in_render = 0
   let start_line = 0
+  let render_start = 0
   let block_content = []
   
-  for lnum in range(1, line('$'))
+  let lnum = 1
+  while lnum <= line('$')
     let line = getline(lnum)
     
     if line =~# '^```mermaid\s*$'
-      let in_block = 1
+      let in_mermaid = 1
       let start_line = lnum
       let block_content = []
-    elseif in_block && line =~# '^```\s*$'
-      let in_block = 0
+      let render_start = 0
+    elseif in_mermaid && line =~# '^```\s*$'
+      let in_mermaid = 0
+      " Check if next block is a render block
+      if lnum + 1 <= line('$') && getline(lnum + 1) =~# '^```mermaid-ascii-render\s*$'
+        let render_start = lnum + 1
+        let in_render = 1
+      endif
+      
+      if !in_render
+        call add(blocks, {
+          \ 'mermaid_start': start_line,
+          \ 'mermaid_end': lnum,
+          \ 'render_start': 0,
+          \ 'render_end': 0,
+          \ 'content': block_content,
+          \ 'rendered': 0
+          \ })
+      endif
+    elseif in_render && line =~# '^```\s*$'
+      let in_render = 0
       call add(blocks, {
-        \ 'start': start_line,
-        \ 'end': lnum,
-        \ 'content': block_content
+        \ 'mermaid_start': start_line,
+        \ 'mermaid_end': start_line + len(block_content) + 1,
+        \ 'render_start': render_start,
+        \ 'render_end': lnum,
+        \ 'content': block_content,
+        \ 'rendered': 1
         \ })
-    elseif in_block
+    elseif in_mermaid
       call add(block_content, line)
     endif
-  endfor
+    
+    let lnum += 1
+  endwhile
   
   return blocks
 endfunction
@@ -84,85 +97,65 @@ function! mermaid_ascii#RenderMermaid(content)
   return output
 endfunction
 
-" Add virtual text using text properties
-function! s:AddVirtualText(start_line, end_line, rendered_lines)
-  call s:InitPropType()
+" Render a single block by inserting ASCII after the mermaid block
+function! mermaid_ascii#RenderBlock(block)
+  if a:block.rendered
+    " Already has a render block, update it
+    call mermaid_ascii#UpdateRenderBlock(a:block)
+    return 1
+  endif
   
-  " Add virtual text below the first line of the mermaid block
-  " Each rendered line becomes a separate virtual text property
-  for idx in range(len(a:rendered_lines))
-    call prop_add(a:start_line, 0, {
-      \ 'type': s:prop_type,
-      \ 'text': a:rendered_lines[idx],
-      \ 'text_align': 'below'
-      \ })
-  endfor
-  
-  " Conceal all lines in the mermaid block
-  for lnum in range(a:start_line, a:end_line)
-    " Use matchaddpos to conceal these lines
-    call matchaddpos('Conceal', [lnum], 10, -1, {'conceal': ' '})
-  endfor
-  
-  " Set conceallevel to hide the original text
-  setlocal conceallevel=3
-  setlocal concealcursor=nvic
-endfunction
-
-" Remove virtual text and properties
-function! s:RemoveVirtualText(start_line, end_line)
-  " Remove text properties
-  call prop_remove({
-    \ 'type': s:prop_type,
-    \ 'bufnr': bufnr('%'),
-    \ 'all': v:true
-    \ }, a:start_line, a:end_line)
-  
-  " Clear conceal matches
-  call clearmatches()
-endfunction
-
-" Render a single block
-function! mermaid_ascii#RenderBlock(start, end, content)
   " Render the mermaid content
-  let rendered = mermaid_ascii#RenderMermaid(a:content)
+  let rendered = mermaid_ascii#RenderMermaid(a:block.content)
   
   if empty(rendered)
     return 0
   endif
   
-  " Store in state
-  let block_key = bufnr('%') . ':' . a:start . '-' . a:end
-  let s:rendered_blocks[block_key] = {
-    \ 'start': a:start,
-    \ 'end': a:end,
-    \ 'rendered': rendered
-    \ }
+  " Insert render block after the mermaid block
+  let insert_line = a:block.mermaid_end
+  let render_block = ['```mermaid-ascii-render'] + rendered + ['```']
   
-  " Add virtual text
-  call s:AddVirtualText(a:start, a:end, rendered)
+  call append(insert_line, render_block)
   
   return 1
 endfunction
 
-" Unrender a block
-function! mermaid_ascii#UnrenderBlock(start, end)
-  let block_key = bufnr('%') . ':' . a:start . '-' . a:end
+" Update an existing render block
+function! mermaid_ascii#UpdateRenderBlock(block)
+  " Render the mermaid content
+  let rendered = mermaid_ascii#RenderMermaid(a:block.content)
   
-  if !has_key(s:rendered_blocks, block_key)
+  if empty(rendered)
+    return 0
+  endif
+  
+  " Delete old render block content (keep the markers)
+  let old_content_start = a:block.render_start + 1
+  let old_content_end = a:block.render_end - 1
+  
+  if old_content_end >= old_content_start
+    execute old_content_start . ',' . old_content_end . 'delete'
+  endif
+  
+  " Insert new rendered content
+  call append(a:block.render_start, rendered)
+  
+  return 1
+endfunction
+
+" Unrender a single block by removing the render block
+function! mermaid_ascii#UnrenderBlock(block)
+  if !a:block.rendered
     return
   endif
   
-  " Remove virtual text
-  call s:RemoveVirtualText(a:start, a:end)
-  
-  " Remove from state
-  unlet s:rendered_blocks[block_key]
+  " Delete the entire render block
+  execute a:block.render_start . ',' . a:block.render_end . 'delete'
 endfunction
 
 " Render all mermaid blocks in the buffer
 function! mermaid_ascii#RenderAll()
-  " Find all blocks
   let blocks = mermaid_ascii#FindMermaidBlocks()
   
   if empty(blocks)
@@ -170,45 +163,50 @@ function! mermaid_ascii#RenderAll()
     return
   endif
   
-  " Clear existing rendered blocks
-  call mermaid_ascii#UnrenderAll()
-  
-  " Render each block
+  " Process blocks in reverse order to maintain line numbers
   let num_rendered = 0
-  for block in blocks
-    if mermaid_ascii#RenderBlock(block.start, block.end, block.content)
+  for block in reverse(copy(blocks))
+    if mermaid_ascii#RenderBlock(block)
       let num_rendered += 1
     endif
   endfor
   
-  echo 'Rendered ' . num_rendered . ' mermaid block(s) - original content preserved'
+  " Enable auto-rendering
+  let s:auto_render_enabled = 1
+  
+  echo 'Rendered ' . num_rendered . ' mermaid block(s)'
 endfunction
 
 " Unrender all mermaid blocks
 function! mermaid_ascii#UnrenderAll()
-  " Remove all properties for this buffer
-  let buf_prefix = bufnr('%') . ':'
-  for key in keys(s:rendered_blocks)
-    if key =~# '^' . buf_prefix
-      let block = s:rendered_blocks[key]
-      call s:RemoveVirtualText(block.start, block.end)
-      unlet s:rendered_blocks[key]
-    endif
+  let blocks = mermaid_ascii#FindMermaidBlocks()
+  
+  " Only process blocks that have render blocks
+  let rendered_blocks = filter(copy(blocks), 'v:val.rendered')
+  
+  if empty(rendered_blocks)
+    echo 'No rendered blocks found'
+    return
+  endif
+  
+  " Process in reverse order to maintain line numbers
+  for block in reverse(rendered_blocks)
+    call mermaid_ascii#UnrenderBlock(block)
   endfor
   
-  " Reset conceal settings
-  setlocal conceallevel=0
+  " Disable auto-rendering
+  let s:auto_render_enabled = 0
   
-  echo 'Unrendered all mermaid blocks'
+  echo 'Unrendered ' . len(rendered_blocks) . ' mermaid block(s)'
 endfunction
 
 " Toggle rendering state
 function! mermaid_ascii#Toggle()
-  " Check if we have any rendered blocks for this buffer
-  let buf_prefix = bufnr('%') . ':'
+  let blocks = mermaid_ascii#FindMermaidBlocks()
   let has_rendered = 0
-  for key in keys(s:rendered_blocks)
-    if key =~# '^' . buf_prefix
+  
+  for block in blocks
+    if block.rendered
       let has_rendered = 1
       break
     endif
@@ -234,16 +232,15 @@ function! mermaid_ascii#ToggleBlock()
   
   " Find block containing current line
   for block in blocks
-    if lnum >= block.start && lnum <= block.end
-      let block_key = bufnr('%') . ':' . block.start . '-' . block.end
-      
-      if has_key(s:rendered_blocks, block_key)
-        " Block is rendered, unrender it
-        call mermaid_ascii#UnrenderBlock(block.start, block.end)
+    let in_mermaid = lnum >= block.mermaid_start && lnum <= block.mermaid_end
+    let in_render = block.rendered && lnum >= block.render_start && lnum <= block.render_end
+    
+    if in_mermaid || in_render
+      if block.rendered
+        call mermaid_ascii#UnrenderBlock(block)
         echo 'Block unrendered'
       else
-        " Block is not rendered, render it
-        if mermaid_ascii#RenderBlock(block.start, block.end, block.content)
+        if mermaid_ascii#RenderBlock(block)
           echo 'Block rendered'
         endif
       endif
@@ -252,4 +249,44 @@ function! mermaid_ascii#ToggleBlock()
   endfor
   
   echo 'Cursor is not in a mermaid block'
+endfunction
+
+" Handle cursor movement for auto-updating
+function! mermaid_ascii#OnCursorMoved()
+  if !s:auto_render_enabled
+    return
+  endif
+  
+  " Get current block
+  let blocks = mermaid_ascii#FindMermaidBlocks()
+  let lnum = line('.')
+  
+  for block in blocks
+    if !block.rendered
+      continue
+    endif
+    
+    let in_mermaid = lnum >= block.mermaid_start && lnum <= block.mermaid_end
+    
+    " If cursor just left a mermaid block, update its render
+    if !in_mermaid && exists('b:last_in_mermaid_block')
+      if b:last_in_mermaid_block == block.mermaid_start
+        " Update the content from buffer
+        let new_content = getline(block.mermaid_start + 1, block.mermaid_end - 1)
+        let block.content = new_content
+        call mermaid_ascii#UpdateRenderBlock(block)
+      endif
+    endif
+    
+    " Track which block we're in
+    if in_mermaid
+      let b:last_in_mermaid_block = block.mermaid_start
+      return
+    endif
+  endfor
+  
+  " Not in any block
+  if exists('b:last_in_mermaid_block')
+    unlet b:last_in_mermaid_block
+  endif
 endfunction
