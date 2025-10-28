@@ -194,10 +194,89 @@ function! mermaid_ascii#RenderAll()
     endif
   endfor
   
-  " Enable auto-rendering
-  let s:auto_render_enabled = 1
-  
   echo 'Rendered ' . num_rendered . ' mermaid block(s)'
+endfunction
+
+" Update all existing render blocks
+function! mermaid_ascii#UpdateAll()
+  let blocks = mermaid_ascii#FindMermaidBlocks()
+  
+  " Only process blocks that have render blocks
+  let rendered_blocks = filter(copy(blocks), 'v:val.rendered')
+  
+  if empty(rendered_blocks)
+    echo 'No rendered blocks to update. Use :MermaidAsciiToggleBlock to create render blocks.'
+    return
+  endif
+  
+  " Update each rendered block
+  let num_updated = 0
+  for block in rendered_blocks
+    if mermaid_ascii#UpdateRenderBlock(block)
+      let num_updated += 1
+    endif
+  endfor
+  
+  if num_updated > 0
+    echo 'Updated ' . num_updated . ' mermaid block(s)'
+  else
+    echo 'All render blocks are up to date'
+  endif
+endfunction
+
+" Update current block
+function! mermaid_ascii#UpdateCurrent()
+  let blocks = mermaid_ascii#FindMermaidBlocks()
+  
+  if empty(blocks)
+    echo 'No mermaid blocks found'
+    return
+  endif
+  
+  let lnum = line('.')
+  
+  " Find block containing current line
+  for block in blocks
+    let in_mermaid = lnum >= block.mermaid_start && lnum <= block.mermaid_end
+    let in_render = block.rendered && lnum >= block.render_start && lnum <= block.render_end
+    
+    if in_mermaid || in_render
+      if !block.rendered
+        echo 'Block not rendered. Use :MermaidAsciiToggleBlock to create render block.'
+        return
+      endif
+      
+      if mermaid_ascii#UpdateRenderBlock(block)
+        echo 'Block updated'
+      else
+        echo 'Block already up to date'
+      endif
+      return
+    endif
+  endfor
+  
+  echo 'Cursor is not in a mermaid block'
+endfunction
+
+" Enable auto-processing
+function! mermaid_ascii#EnableAuto()
+  let s:auto_render_enabled = 1
+  echo 'Auto-update enabled - edit mermaid blocks and move cursor away to update'
+endfunction
+
+" Disable auto-processing
+function! mermaid_ascii#DisableAuto()
+  let s:auto_render_enabled = 0
+  echo 'Auto-update disabled'
+endfunction
+
+" Toggle auto-processing
+function! mermaid_ascii#ToggleAuto()
+  if s:auto_render_enabled
+    call mermaid_ascii#DisableAuto()
+  else
+    call mermaid_ascii#EnableAuto()
+  endif
 endfunction
 
 " Unrender all mermaid blocks
@@ -216,9 +295,6 @@ function! mermaid_ascii#UnrenderAll()
   for block in reverse(rendered_blocks)
     call mermaid_ascii#UnrenderBlock(block)
   endfor
-  
-  " Disable auto-rendering
-  let s:auto_render_enabled = 0
   
   echo 'Unrendered ' . len(rendered_blocks) . ' mermaid block(s)'
 endfunction

@@ -25,7 +25,9 @@ if !exists('g:mermaid_ascii_auto_update')
 endif
 
 " Commands
-command! MermaidAsciiRender call mermaid_ascii#RenderAll()
+command! MermaidAsciiRender call mermaid_ascii#ToggleAuto()
+command! MermaidAsciiUpdateAll call mermaid_ascii#UpdateAll()
+command! MermaidAsciiUpdate call mermaid_ascii#UpdateCurrent()
 command! MermaidAsciiUnrender call mermaid_ascii#UnrenderAll()
 command! MermaidAsciiToggle call mermaid_ascii#Toggle()
 command! MermaidAsciiToggleBlock call mermaid_ascii#ToggleBlock()
@@ -33,7 +35,8 @@ command! MermaidAsciiToggleBlock call mermaid_ascii#ToggleBlock()
 " Default mappings
 if !exists('g:mermaid_ascii_no_mappings') || !g:mermaid_ascii_no_mappings
   nnoremap <silent> <Leader>mr :MermaidAsciiRender<CR>
-  nnoremap <silent> <Leader>mu :MermaidAsciiUnrender<CR>
+  nnoremap <silent> <Leader>mu :MermaidAsciiUpdate<CR>
+  nnoremap <silent> <Leader>ma :MermaidAsciiUpdateAll<CR>
   nnoremap <silent> <Leader>mt :MermaidAsciiToggle<CR>
   nnoremap <silent> <Leader>mb :MermaidAsciiToggleBlock<CR>
 endif
