@@ -146,12 +146,12 @@ function! mermaid_ascii#UpdateRenderBlock(block)
   let save_cursor = getcurpos()
   let save_view = winsaveview()
   
-  " Delete old render block content (keep the markers)
+  " Delete old render block content (keep the markers) - silently
   let old_content_start = a:block.render_start + 1
   let old_content_end = a:block.render_end - 1
   
   if old_content_end >= old_content_start
-    execute old_content_start . ',' . old_content_end . 'delete'
+    silent execute old_content_start . ',' . old_content_end . 'delete'
   endif
   
   " Insert new rendered content
@@ -173,8 +173,8 @@ function! mermaid_ascii#UnrenderBlock(block)
     return
   endif
   
-  " Delete the entire render block
-  execute a:block.render_start . ',' . a:block.render_end . 'delete'
+  " Delete the entire render block silently
+  silent execute a:block.render_start . ',' . a:block.render_end . 'delete'
 endfunction
 
 " Render all mermaid blocks in the buffer
