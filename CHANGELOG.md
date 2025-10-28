@@ -14,18 +14,18 @@ Major redesign for simplicity and practicality:
 
 ### File Format
 ```markdown
-```mermaid
-graph LR
-A --> B
-```
+    ```mermaid
+    graph LR
+    A --> B
+    ```
 
-```mermaid-ascii-render
-┌───┐     ┌───┐
-│   │     │   │
-│ A ├────►│ B │
-│   │     │   │
-└───┘     └───┘
-```
+    ```mermaid-ascii-render
+    ┌───┐     ┌───┐
+    │   │     │   │
+    │ A ├────►│ B │
+    │   │     │   │
+    └───┘     └───┘
+    ```
 ```
 
 ### Benefits

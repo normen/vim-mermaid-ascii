@@ -13,10 +13,11 @@ A Vim plugin that renders Mermaid diagrams as ASCII art. The rendered diagrams a
 
 ```vim
 " 1. Create a mermaid block
-```mermaid
-graph LR
-A --> B
-```
+" Use a regular markdown code fence for the diagram:
+   ```mermaid
+   graph LR
+   A --> B
+   ```
 
 " 2. Create render block
 :MermaidAsciiToggleBlock    " or <Leader>mb
@@ -81,18 +82,18 @@ nnoremap <Leader>mt :MermaidAsciiToggleBlock<CR>
 The plugin creates `mermaid-ascii-render` blocks containing the ASCII art:
 
 ```markdown
-```mermaid
-graph LR
-A --> B
-```
+    ```mermaid
+    graph LR
+    A --> B
+    ```
 
-```mermaid-ascii-render
-┌───┐     ┌───┐
-│   │     │   │
-│ A ├────►│ B │
-│   │     │   │
-└───┘     └───┘
-```
+    ```mermaid-ascii-render
+    ┌───┐     ┌───┐
+    │   │     │   │
+    │ A ├────►│ B │
+    │   │     │   │
+    └───┘     └───┘
+    ```
 ```
 
 Both blocks are saved in the file and viewable anywhere!

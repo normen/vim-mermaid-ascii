@@ -138,18 +138,18 @@ A "block" is a dictionary with these keys:
 ### File Format
 
 ```markdown
-```mermaid
-graph LR
-A --> B
-```
+    ```mermaid
+    graph LR
+    A --> B
+    ```
 
-```mermaid-ascii-render
-┌───┐     ┌───┐
-│   │     │   │
-│ A ├────►│ B │
-│   │     │   │
-└───┘     └───┘
-```
+    ```mermaid-ascii-render
+    ┌───┐     ┌───┐
+    │   │     │   │
+    │ A ├────►│ B │
+    │   │     │   │
+    └───┘     └───┘
+    ```
 ```
 
 **Marker:** `mermaid-ascii-render` identifies render blocks

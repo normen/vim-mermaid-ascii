@@ -67,18 +67,18 @@ Switch2 --> Server2
 After running `:MermaidAsciiToggleBlock` on a diagram, you'll see a render block appear below it:
 
 ```markdown
-```mermaid
-graph LR
-A --> B
-```
+    ```mermaid
+    graph LR
+    A --> B
+    ```
 
-```mermaid-ascii-render
-┌───┐     ┌───┐
-│   │     │   │
-│ A ├────►│ B │
-│   │     │   │
-└───┘     └───┘
-```
+    ```mermaid-ascii-render
+    ┌───┐     ┌───┐
+    │   │     │   │
+    │ A ├────►│ B │
+    │   │     │   │
+    └───┘     └───┘
+    ```
 ```
 
 The render block updates automatically when you edit the mermaid code (if auto-update is enabled).
