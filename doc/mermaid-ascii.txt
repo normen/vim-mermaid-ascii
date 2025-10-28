@@ -1,4 +1,5 @@
 *mermaid-ascii.txt*  Render Mermaid diagrams as ASCII art in Vim
+*mermaid-ascii* *vim-mermaid-ascii* *mermaid*
 
 Author:  normen
 License: MIT
