@@ -42,7 +42,7 @@ Process --> End
 Try these commands:
 - :MermaidAsciiRender - Render all blocks
 - :MermaidAsciiUnrender - Restore original
-- :MermaidAsciiToggle - Toggle rendering
+- :MermaidAsciiToggle or :MermaidAsciiToggleBlock - Toggle rendering
 - <Leader>mr - Render (normal mode)
 - <Leader>mu - Unrender (normal mode)
 - <Leader>mt - Toggle (normal mode)
@@ -57,6 +57,6 @@ echo "Then execute these commands in Vim:"
 echo "  :MermaidAsciiRender    # Render the diagrams"
 echo "  (move cursor into diagram)  # See original code"
 echo "  (move cursor out)           # Auto re-render"
-echo "  :MermaidAsciiToggle    # Toggle all"
+echo "  :MermaidAsciiToggle or :MermaidAsciiToggleBlock    # Toggle all"
 echo
 echo "=== Test completed successfully ==="

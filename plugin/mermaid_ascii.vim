@@ -24,16 +24,22 @@ if !exists('g:mermaid_ascii_no_auto')
   let g:mermaid_ascii_no_auto = 0
 endif
 
+if !exists('g:mermaid_ascii_auto_toggle')
+  let g:mermaid_ascii_auto_toggle = 1
+endif
+
 " Commands
 command! MermaidAsciiRender call mermaid_ascii#RenderAll()
 command! MermaidAsciiUnrender call mermaid_ascii#UnrenderAll()
 command! MermaidAsciiToggle call mermaid_ascii#Toggle()
+command! MermaidAsciiToggleBlock call mermaid_ascii#ToggleBlock()
 
 " Default mappings
 if !exists('g:mermaid_ascii_no_mappings') || !g:mermaid_ascii_no_mappings
   nnoremap <silent> <Leader>mr :MermaidAsciiRender<CR>
   nnoremap <silent> <Leader>mu :MermaidAsciiUnrender<CR>
   nnoremap <silent> <Leader>mt :MermaidAsciiToggle<CR>
+  nnoremap <silent> <Leader>mb :MermaidAsciiToggleBlock<CR>
 endif
 
 " Auto commands for cursor movement

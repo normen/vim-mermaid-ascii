@@ -269,10 +269,54 @@ function! mermaid_ascii#GetBlockAtCursor()
   return -1
 endfunction
 
+" Toggle a single block at cursor position
+function! mermaid_ascii#ToggleBlock()
+  " Initialize blocks if not already done
+  if empty(s:mermaid_blocks)
+    let blocks = mermaid_ascii#FindMermaidBlocks()
+    if empty(blocks)
+      echo 'No mermaid blocks found'
+      return
+    endif
+    let idx = 0
+    for block in blocks
+      let s:mermaid_blocks[idx] = block
+      let idx += 1
+    endfor
+  endif
+  
+  let current_block = mermaid_ascii#GetBlockAtCursor()
+  
+  if current_block < 0
+    echo 'Cursor is not in a mermaid block'
+    return
+  endif
+  
+  if get(s:rendered_state, current_block, 0)
+    " Block is rendered, unrender it
+    call mermaid_ascii#UnrenderBlock(current_block)
+    echo 'Block unrendered'
+  else
+    " Block is not rendered, render it
+    " First update content from buffer
+    let block = s:mermaid_blocks[current_block]
+    let new_content = getline(block.start + 1, block.end - 1)
+    let s:mermaid_blocks[current_block].content = new_content
+    call mermaid_ascii#RenderBlock(current_block)
+    echo 'Block rendered'
+  endif
+endfunction
+
 " Handle cursor movement
 function! mermaid_ascii#OnCursorMoved()
   " Only process if auto-rendering is enabled
   if !s:auto_render_enabled
+    return
+  endif
+  
+  " Check if auto-toggle is enabled
+  let auto_toggle = get(g:, 'mermaid_ascii_auto_toggle', 1)
+  if !auto_toggle
     return
   endif
   

@@ -97,6 +97,10 @@ To re-enable, run :MermaidAsciiRender again.
 :MermaidAsciiToggle                                    *:MermaidAsciiToggle*
     Toggle between rendered and original state for all blocks.
 
+:MermaidAsciiToggleBlock                          *:MermaidAsciiToggleBlock*
+    Toggle the current block under the cursor between rendered and original
+    state. Useful for manually toggling individual blocks.
+
 ==============================================================================
 6. Mappings                                         *mermaid-ascii-mappings*
 
@@ -105,6 +109,7 @@ Default mappings (in normal mode):
 <Leader>mr          Render all mermaid blocks
 <Leader>mu          Unrender all mermaid blocks
 <Leader>mt          Toggle rendering
+<Leader>mb          Toggle current block
 
 To disable default mappings, add to your vimrc: >
     let g:mermaid_ascii_no_mappings = 1
@@ -114,6 +119,7 @@ Then define your own: >
     nnoremap <Leader>ma :MermaidAsciiRender<CR>
     nnoremap <Leader>ms :MermaidAsciiUnrender<CR>
     nnoremap <Leader>mt :MermaidAsciiToggle<CR>
+    nnoremap <Leader>mb :MermaidAsciiToggleBlock<CR>
 <
 
 ==============================================================================
@@ -135,6 +141,13 @@ Then define your own: >
     Disable automatic rendering/unrendering on cursor movement.
     Default: 0 >
         let g:mermaid_ascii_no_auto = 1
+<
+
+*g:mermaid_ascii_auto_toggle*
+    Enable/disable auto-toggle when cursor enters/leaves rendered blocks.
+    When disabled, use :MermaidAsciiToggleBlock to manually toggle blocks.
+    Default: 1 >
+        let g:mermaid_ascii_auto_toggle = 0
 <
 
 *g:mermaid_ascii_no_mappings*

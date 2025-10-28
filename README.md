@@ -64,18 +64,26 @@ cp -r vim-mermaid-ascii/autoload ~/.vim/
 - `:MermaidAsciiRender` - Render all mermaid blocks in the current buffer
 - `:MermaidAsciiUnrender` - Show original mermaid code for all blocks
 - `:MermaidAsciiToggle` - Toggle between rendered and original state
+- `:MermaidAsciiToggleBlock` - Toggle the current block under cursor
 
 ### Default Keybindings
 
 - `<Leader>mr` - Render mermaid blocks
 - `<Leader>mu` - Unrender mermaid blocks
 - `<Leader>mt` - Toggle rendering
+- `<Leader>mb` - Toggle current block
 
 ### Automatic Behavior
 
-When you run `:MermaidAsciiRender`, auto-rendering is enabled. This means when you move your cursor into a rendered mermaid block, it automatically shows the original code for editing. When you move the cursor out, it re-renders the ASCII art.
+When you run `:MermaidAsciiRender`, auto-rendering is enabled. By default, this means when you move your cursor into a rendered mermaid block, it automatically shows the original code for editing. When you move the cursor out, it re-renders the ASCII art.
 
 When you run `:MermaidAsciiUnrender`, auto-rendering is disabled. The blocks stay as mermaid code and won't auto-render when you move your cursor.
+
+If you prefer to manually toggle individual blocks, you can disable the auto-toggle behavior:
+```vim
+let g:mermaid_ascii_auto_toggle = 0
+```
+Then use `:MermaidAsciiToggleBlock` or `<Leader>mb` to toggle individual blocks manually.
 
 ## Configuration
 
@@ -85,6 +93,10 @@ let g:mermaid_ascii_bin = '/path/to/mermaid-ascii'
 
 " Disable automatic rendering on cursor move (default: 0)
 let g:mermaid_ascii_no_auto = 1
+
+" Disable auto-toggle when cursor enters/leaves blocks (default: 1)
+" When disabled, use :MermaidAsciiToggleBlock to manually toggle blocks
+let g:mermaid_ascii_auto_toggle = 0
 
 " Set custom keybindings (set to 0 to disable default keybindings)
 let g:mermaid_ascii_no_mappings = 1
